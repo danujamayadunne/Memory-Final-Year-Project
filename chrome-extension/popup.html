@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory - Web Summarizer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 350px;
+      min-height: 400px;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000000;
+      color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .header {
+      background: #000000;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 1px solid #333333;
+      border-radius: 12px 12px 0 0;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 20px;
+      background: #000000;
+    }
+
+    .login-section {
+      text-align: center;
+    }
+
+    .login-section h2 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #ffffff;
+    }
+
+    .login-section p {
+      font-size: 14px;
+      color: #cccccc;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #000000;
+      color: #ffffff;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #ffffff;
+      border: 1px solid #333333;
+      margin-top: 8px;
+    }
+
+    .btn-secondary:hover {
+      background: #333333;
+      color: #ffffff;
+    }
+
+    .summary-section {
+      display: none;
+    }
+
+    .current-site {
+      background: #111111;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .current-site h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .current-site p {
+      font-size: 12px;
+      color: #cccccc;
+      word-break: break-all;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .loading .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #333333;
+      border-top: 2px solid #ffffff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .success {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .success-icon {
+      width: 48px;
+      height: 48px;
+      background: #ffffff;
+      color: #000000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-weight: bold;
+    }
+
+    .success h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .success p {
+      font-size: 14px;
+      color: #cccccc;
+    }
+
+    .error {
+      background: #1a1a1a;
+      border: 1px solid #ff4444;
+      color: #ff4444;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .user-info {
+      background: #111111;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      background: #ffffff;
+      color: #000000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .user-details h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .user-details p {
+      font-size: 12px;
+      color: #cccccc;
+    }
+
+    .logout-btn {
+      background: #ff4444;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .logout-btn:hover {
+      background: #ff3333;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Memory</h1>
+    <p>Web Summarizer</p>
+  </div>
+
+  <div class="content">
+    <!-- Login Section -->
+    <div id="loginSection" class="login-section">
+      <h2>Welcome to Memory</h2>
+      <p>Sign in to start saving and summarizing web content</p>
+      <button id="loginBtn" class="btn btn-primary">Sign In</button>
+      <button id="signupBtn" class="btn btn-secondary">Create Account</button>
+    </div>
+
+    <!-- Summary Section -->
+    <div id="summarySection" class="summary-section">
+      <div id="userInfo" class="user-info">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-details">
+          <h4 id="userName">User</h4>
+          <p id="userEmail">user@example.com</p>
+        </div>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+      </div>
+
+      <div id="currentSite" class="current-site">
+        <h3>Current Page</h3>
+        <p id="siteUrl">Loading...</p>
+      </div>
+
+      <div id="errorMessage" class="error" style="display: none;"></div>
+
+      <button id="addToMemoryBtn" class="btn btn-primary">Add to Memory</button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingSection" class="loading" style="display: none;">
+      <div class="spinner"></div>
+      <p>Adding to Memory...</p>
+    </div>
+
+    <!-- Success State -->
+    <div id="successSection" class="success" style="display: none;">
+      <div class="success-icon">✓</div>
+      <h3>Added to Memory!</h3>
+      <p>This page has been summarized and saved to your knowledge base.</p>
+      <button id="viewMemoryBtn" class="btn btn-secondary" style="margin-top: 12px;">View in Memory</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

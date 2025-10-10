@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Extension Authentication</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .btn {
+      background: #3b82f6;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 10px 5px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn:hover {
+      background: #2563eb;
+    }
+    .status {
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 6px;
+      background: #f0f9ff;
+      border: 1px solid #0ea5e9;
+    }
+    .error {
+      background: #fef2f2;
+      border-color: #f87171;
+    }
+    .success {
+      background: #f0fdf4;
+      border-color: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Memory Extension Authentication Test</h1>
+    <p>This page helps test the authentication flow between the Memory web app and Chrome extension.</p>
+    
+    <div class="status" id="status">
+      <strong>Status:</strong> Ready to test
+    </div>
+    
+    <h3>Test Steps:</h3>
+    <ol>
+      <li>Make sure your Memory app is running on <code>http://localhost:3000</code></li>
+      <li>Load the Chrome extension in developer mode</li>
+      <li>Click the extension icon and try to sign in</li>
+      <li>After signing in, the extension should automatically detect the authentication</li>
+    </ol>
+    
+    <h3>Manual Test Links:</h3>
+    <a href="http://localhost:3000/auth/login?extension=true" class="btn" target="_blank">
+      Test Login (Extension Mode)
+    </a>
+    <a href="http://localhost:3000/auth/signup?extension=true" class="btn" target="_blank">
+      Test Signup (Extension Mode)
+    </a>
+    
+    <h3>Debug Information:</h3>
+    <div id="debug">
+      <p><strong>Current URL:</strong> <span id="currentUrl"></span></p>
+      <p><strong>Extension Parameter:</strong> <span id="extensionParam"></span></p>
+    </div>
+    
+    <h3>Simulate Extension Message:</h3>
+    <button class="btn" onclick="simulateAuthSuccess()">
+      Simulate Auth Success
+    </button>
+    
+    <div id="messageLog" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+      <strong>Message Log:</strong><br>
+    </div>
+  </div>
+
+  <script>
+    // Update debug info
+    document.getElementById('currentUrl').textContent = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search);
+    document.getElementById('extensionParam').textContent = urlParams.get('extension') || 'Not set';
+    
+    // Listen for messages from extension
+    window.addEventListener('message', (event) => {
+      logMessage('Received message: ' + JSON.stringify(event.data));
+      
+      if (event.data.type === 'MEMORY_AUTH_SUCCESS') {
+        logMessage('✅ Authentication success detected!');
+        document.getElementById('status').innerHTML = '<strong>Status:</strong> <span style="color: green;">Authentication successful!</span>';
+        document.getElementById('status').className = 'status success';
+      }
+    });
+    
+    function logMessage(message) {
+      const log = document.getElementById('messageLog');
+      const timestamp = new Date().toLocaleTimeString();
+      log.innerHTML += `[${timestamp}] ${message}<br>`;
+      log.scrollTop = log.scrollHeight;
+    }
+    
+    function simulateAuthSuccess() {
+      const mockData = {
+        type: 'MEMORY_AUTH_SUCCESS',
+        data: {
+          access_token: 'mock_token_123',
+          user: {
+            id: 'mock_user_id',
+            email: 'test@example.com',
+            name: 'Test User'
+          }
+        }
+      };
+      
+      logMessage('Simulating auth success message...');
+      window.postMessage(mockData, '*');
+    }
+    
+    // Log page load
+    logMessage('Test page loaded');
+  </script>
+</body>
+</html>
