@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,228 +13,346 @@
     }
 
     body {
-      width: 350px;
-      min-height: 400px;
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #000000;
+      width: 380px;
+      min-height: 450px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
       color: #ffffff;
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     }
 
     .header {
-      background: #000000;
+      background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
       color: white;
-      padding: 20px;
+      padding: 24px 20px;
       text-align: center;
-      border-bottom: 1px solid #333333;
-      border-radius: 12px 12px 0 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
     }
 
     .header h1 {
-      font-size: 18px;
-      font-weight: 600;
+      font-size: 22px;
+      font-weight: 700;
       margin-bottom: 4px;
+      background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
     }
 
     .header p {
-      font-size: 12px;
-      opacity: 0.9;
+      font-size: 13px;
+      opacity: 0.7;
+      font-weight: 400;
     }
 
     .content {
-      padding: 20px;
-      background: #000000;
+      padding: 24px;
+      background: transparent;
     }
 
     .login-section {
       text-align: center;
+      padding: 8px 0;
     }
 
     .login-section h2 {
-      font-size: 16px;
-      margin-bottom: 12px;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
       color: #ffffff;
+      letter-spacing: -0.3px;
     }
 
     .login-section p {
       font-size: 14px;
-      color: #cccccc;
-      margin-bottom: 20px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 28px;
+      line-height: 1.5;
     }
 
     .btn {
       width: 100%;
-      padding: 12px 16px;
+      padding: 14px 24px;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
+      border-radius: 9999px;
+      font-size: 15px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
       display: inline-block;
       text-align: center;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.2px;
     }
 
     .btn-primary {
-      background: #ffffff;
+      background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
       color: #000000;
-      border: 1px solid #ffffff;
-    }
-
-    .btn-primary:hover {
-      background: #000000;
-      color: #ffffff;
+      border: none;
+      letter-spacing: -0.3px;
+      margin-bottom: 12px;
     }
 
     .btn-secondary {
       background: transparent;
       color: #ffffff;
-      border: 1px solid #333333;
-      margin-top: 8px;
-    }
-
-    .btn-secondary:hover {
-      background: #333333;
-      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      letter-spacing: -0.3px;
+      margin-top: 0;
     }
 
     .summary-section {
       display: none;
     }
 
-    .current-site {
-      background: #111111;
-      border: 1px solid #333333;
+    .shortcut-hint {
+      margin-top: 16px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .shortcut-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
+      padding: 2px 8px;
+      margin: 0 3px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+      letter-spacing: 0.3px;
+    }
+
+    .current-site {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .current-site:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
     }
 
     .current-site h3 {
-      font-size: 14px;
+      font-size: 11px;
       font-weight: 600;
-      margin-bottom: 8px;
-      color: #ffffff;
+      margin-bottom: 10px;
+      color: rgba(255, 255, 255, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .current-site p {
       font-size: 12px;
-      color: #cccccc;
+      color: rgba(255, 255, 255, 0.7);
       word-break: break-all;
+      line-height: 1.5;
     }
 
     .loading {
       text-align: center;
-      padding: 20px;
+      padding: 40px 20px;
     }
 
     .loading .spinner {
-      width: 24px;
-      height: 24px;
-      border: 2px solid #333333;
-      border-top: 2px solid #ffffff;
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #ffffff;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 12px;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
     }
 
     .success {
       text-align: center;
-      padding: 20px;
+      padding: 32px 20px;
     }
 
     .success-icon {
-      width: 48px;
-      height: 48px;
-      background: #ffffff;
-      color: #000000;
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 12px;
+      margin: 0 auto 16px;
       font-weight: bold;
+      font-size: 28px;
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
     }
 
     .success h3 {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 600;
       color: #ffffff;
       margin-bottom: 8px;
+      letter-spacing: -0.3px;
     }
 
     .success p {
       font-size: 14px;
-      color: #cccccc;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.5;
+      margin-bottom: 20px;
     }
 
     .error {
-      background: #1a1a1a;
-      border: 1px solid #ff4444;
-      color: #ff4444;
-      padding: 12px;
-      border-radius: 8px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 14px 16px;
+      border-radius: 12px;
       font-size: 14px;
       margin-bottom: 16px;
+      backdrop-filter: blur(10px);
     }
 
     .user-info {
-      background: #111111;
-      border: 1px solid #333333;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .user-info:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
     }
 
     .user-avatar {
-      width: 32px;
-      height: 32px;
-      background: #ffffff;
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
       color: #000000;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 600;
-      font-size: 14px;
+      font-weight: 700;
+      font-size: 16px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
     }
 
     .user-details h4 {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       color: #ffffff;
+      margin-bottom: 4px;
+      letter-spacing: -0.2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .user-details p {
       font-size: 12px;
-      color: #cccccc;
+      color: rgba(255, 255, 255, 0.6);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .logout-btn {
-      background: #ff4444;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
-      padding: 8px 12px;
+      padding: 10px 18px;
       border: none;
-      border-radius: 6px;
+      border-radius: 9999px;
       font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+      flex-shrink: 0;
     }
 
-    .logout-btn:hover {
-      background: #ff3333;
+    .format-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 9999px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .format-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.3);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .format-btn.format-active {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      font-weight: 600;
     }
   </style>
 </head>
+
 <body>
   <div class="header">
     <h1>Memory</h1>
@@ -241,7 +360,7 @@
   </div>
 
   <div class="content">
-    <!-- Login Section -->
+
     <div id="loginSection" class="login-section">
       <h2>Welcome to Memory</h2>
       <p>Sign in to start saving and summarizing web content</p>
@@ -249,7 +368,6 @@
       <button id="signupBtn" class="btn btn-secondary">Create Account</button>
     </div>
 
-    <!-- Summary Section -->
     <div id="summarySection" class="summary-section">
       <div id="userInfo" class="user-info">
         <div class="user-avatar" id="userAvatar">U</div>
@@ -267,16 +385,35 @@
 
       <div id="errorMessage" class="error" style="display: none;"></div>
 
+      <div id="formatSelector" style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-bottom: 8px;">Summary
+          Format</label>
+        <div style="display: flex; gap: 8px;">
+          <button id="formatBullets" class="format-btn format-active" data-format="bullets">
+            Bullets
+          </button>
+          <button id="formatParagraph" class="format-btn" data-format="paragraph">
+            Paragraph
+          </button>
+        </div>
+      </div>
+
       <button id="addToMemoryBtn" class="btn btn-primary">Add to Memory</button>
+      <p class="shortcut-hint">
+        Keyboard shortcut:
+        <span class="shortcut-key">Ctrl</span>
+        <span>+</span>
+        <span class="shortcut-key">Shift</span>
+        <span>+</span>
+        <span class="shortcut-key">K</span>
+      </p>
     </div>
 
-    <!-- Loading State -->
     <div id="loadingSection" class="loading" style="display: none;">
       <div class="spinner"></div>
-      <p>Adding to Memory...</p>
+      <p id="loadingText">Loading...</p>
     </div>
 
-    <!-- Success State -->
     <div id="successSection" class="success" style="display: none;">
       <div class="success-icon">✓</div>
       <h3>Added to Memory!</h3>
@@ -287,4 +424,5 @@
 
   <script src="popup.js"></script>
 </body>
+
 </html>

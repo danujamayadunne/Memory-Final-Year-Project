@@ -5,37 +5,14 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { 
-  Tag, 
-  Plus, 
-  X, 
-  Edit, 
-  Trash2, 
-  Loader2,
-  Check
-} from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tag, Plus, X, Loader2, Check } from "lucide-react"
 
 type Tag = {
   id: string
   name: string
   color: string
-  created_at: string
 }
 
 type TagManagerProps = {
@@ -74,12 +51,28 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
     setLoading(true)
     const supabase = createClient()
     try {
-      const { data } = await supabase
-        .from("tags")
-        .select("*")
-        .order("name")
-      
-      if (data) setAllTags(data)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: summaries } = await supabase
+        .from("web_summaries")
+        .select("tags")
+        .eq("user_id", user.id)
+
+      if (summaries) {
+
+        const tagsMap = new Map<string, Tag>()
+        summaries.forEach((summary: any) => {
+          if (summary.tags && Array.isArray(summary.tags)) {
+            summary.tags.forEach((tag: any) => {
+              if (tag.id && tag.name && !tagsMap.has(tag.id)) {
+                tagsMap.set(tag.id, { id: tag.id, name: tag.name, color: tag.color || '#6b7280' })
+              }
+            })
+          }
+        })
+        setAllTags(Array.from(tagsMap.values()).sort((a, b) => a.name.localeCompare(b.name)))
+      }
     } catch (error) {
       console.error("Error loading tags:", error)
     } finally {
@@ -93,18 +86,26 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
     setCreating(true)
     const supabase = createClient()
     try {
-      const { data, error } = await supabase
-        .from("tags")
-        .insert({
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const trimmedName = newTagName.trim().toLowerCase()
+      const existingTag = allTags.find(t => t.name.toLowerCase() === trimmedName)
+
+      let newTag: Tag
+      if (existingTag) {
+        newTag = existingTag
+      } else {
+        newTag = {
+          id: crypto.randomUUID(),
           name: newTagName.trim(),
           color: newTagColor
-        })
-        .select()
-        .single()
+        }
+        setAllTags(prev => [...prev, newTag].sort((a, b) => a.name.localeCompare(b.name)))
+      }
 
-      if (error) throw error
+      await addTagToSummary(newTag)
 
-      setAllTags(prev => [...prev, data])
       setNewTagName("")
       setNewTagColor(TAG_COLORS[0].value)
     } catch (error) {
@@ -114,22 +115,25 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
     }
   }
 
-  const addTagToSummary = async (tagId: string) => {
+  const addTagToSummary = async (tag: Tag) => {
     const supabase = createClient()
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const isAlreadyLinked = currentTags.some(t => t.id === tag.id)
+      if (isAlreadyLinked) return
+
+      const updatedTags = [...currentTags, tag]
       const { error } = await supabase
-        .from("summary_tags")
-        .insert({
-          summary_id: summaryId,
-          tag_id: tagId
-        })
+        .from("web_summaries")
+        .update({ tags: updatedTags })
+        .eq("id", summaryId)
+        .eq("user_id", user.id)
 
       if (error) throw error
 
-      const tag = allTags.find(t => t.id === tagId)
-      if (tag) {
-        onTagsUpdate([...currentTags, tag])
-      }
+      onTagsUpdate(updatedTags)
     } catch (error) {
       console.error("Error adding tag to summary:", error)
     }
@@ -138,62 +142,47 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
   const removeTagFromSummary = async (tagId: string) => {
     const supabase = createClient()
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const updatedTags = currentTags.filter(t => t.id !== tagId)
       const { error } = await supabase
-        .from("summary_tags")
-        .delete()
-        .eq("summary_id", summaryId)
-        .eq("tag_id", tagId)
+        .from("web_summaries")
+        .update({ tags: updatedTags })
+        .eq("id", summaryId)
+        .eq("user_id", user.id)
 
       if (error) throw error
 
-      onTagsUpdate(currentTags.filter(t => t.id !== tagId))
+      onTagsUpdate(updatedTags)
     } catch (error) {
       console.error("Error removing tag from summary:", error)
     }
   }
 
   const addSuggestedTag = async (tagName: string) => {
-    // Check if tag already exists
     let existingTag = allTags.find(t => t.name.toLowerCase() === tagName.toLowerCase())
-    
-    if (!existingTag) {
-      // Create new tag
-      setCreating(true)
-      const supabase = createClient()
-      try {
-        const { data, error } = await supabase
-          .from("tags")
-          .insert({
-            name: tagName,
-            color: TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)].value
-          })
-          .select()
-          .single()
 
-        if (error) throw error
-        existingTag = data
-        setAllTags(prev => [...prev, data])
-      } catch (error) {
-        console.error("Error creating suggested tag:", error)
-        return
-      } finally {
-        setCreating(false)
+    if (!existingTag) {
+      existingTag = {
+        id: crypto.randomUUID(),
+        name: tagName,
+        color: TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)].value
       }
+      setAllTags(prev => [...prev, existingTag!].sort((a, b) => a.name.localeCompare(b.name)))
     }
 
-    // Add to summary
     if (existingTag) {
-      await addTagToSummary(existingTag.id)
+      await addTagToSummary(existingTag)
     }
   }
 
-  const availableTags = allTags.filter(tag => 
+  const availableTags = allTags.filter(tag =>
     !currentTags.some(currentTag => currentTag.id === tag.id)
   )
 
   return (
     <div className="space-y-4">
-      {/* Current Tags */}
       <div>
         <h4 className="text-sm font-medium mb-2 tracking-tight">Current Tags</h4>
         <div className="flex flex-wrap gap-2">
@@ -221,7 +210,6 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
         </div>
       </div>
 
-      {/* Suggested Tags */}
       {suggestedTags.length > 0 && (
         <div>
           <h4 className="text-sm font-medium mb-2 tracking-tight">Suggested Tags</h4>
@@ -243,7 +231,6 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
         </div>
       )}
 
-      {/* Add Existing Tags */}
       <div>
         <h4 className="text-sm font-medium mb-2 tracking-tight">Add Existing Tags</h4>
         <div className="flex flex-wrap gap-2">
@@ -252,7 +239,7 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
               key={tag.id}
               variant="outline"
               size="sm"
-              onClick={() => addTagToSummary(tag.id)}
+              onClick={() => addTagToSummary(tag)}
               className="text-xs"
             >
               <Plus className="h-3 w-3 mr-1" />
@@ -265,7 +252,6 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
         </div>
       </div>
 
-      {/* Create New Tag */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button variant="outline" size="sm">
@@ -277,7 +263,7 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
           <DialogHeader>
             <DialogTitle>Create New Tag</DialogTitle>
             <DialogDescription>
-              Create a new tag to organize your content
+              Create a new tag to organize your summaries
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -300,8 +286,8 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
                   {TAG_COLORS.map(color => (
                     <SelectItem key={color.value} value={color.value}>
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-4 h-4 rounded-full" 
+                        <div
+                          className="w-4 h-4 rounded-full"
                           style={{ backgroundColor: color.value }}
                         />
                         {color.name}
@@ -315,8 +301,8 @@ export function TagManager({ summaryId, currentTags, onTagsUpdate, suggestedTags
               <Button variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              <Button 
-                onClick={createTag} 
+              <Button
+                onClick={createTag}
                 disabled={!newTagName.trim() || creating}
               >
                 {creating ? (

@@ -22,21 +22,27 @@ export default function AuthCallbackPage() {
           const isExtension = searchParams.get('extension') === 'true'
           
           if (isExtension) {
+            const authData = {
+              access_token: data.session.access_token,
+              user: {
+                id: data.session.user.id,
+                email: data.session.user.email,
+                name: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0]
+              }
+            }
+            
+            // Store in localStorage for extension to pick up
+            localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
+            
             // Send auth data to extension
             if (window.opener) {
               window.opener.postMessage({
                 type: 'MEMORY_AUTH_SUCCESS',
-                data: {
-                  access_token: data.session.access_token,
-                  user: {
-                    id: data.session.user.id,
-                    email: data.session.user.email,
-                    name: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0]
-                  }
-                }
+                data: authData
               }, '*')
             }
-            // Close the window
+            
+            // Close the window immediately
             window.close()
           } else {
             // Redirect to dashboard for normal web flow

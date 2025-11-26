@@ -5,19 +5,8 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { 
-  Tag, 
-  Plus, 
-  X, 
-  Loader2
-} from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tag, Plus, X, Loader2 } from "lucide-react"
 
 type Tag = {
   id: string
@@ -35,18 +24,18 @@ type SimpleTagDialogProps = {
 
 const getRandomColor = () => {
   const colors = [
-    "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", 
+    "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444",
     "#ec4899", "#6366f1", "#14b8a6", "#eab308", "#6b7280"
   ]
   return colors[Math.floor(Math.random() * colors.length)]
 }
 
-export function SimpleTagDialog({ 
-  summaryId, 
-  currentTags, 
-  onTagsUpdate, 
-  isOpen, 
-  onClose 
+export function SimpleTagDialog({
+  summaryId,
+  currentTags,
+  onTagsUpdate,
+  isOpen,
+  onClose
 }: SimpleTagDialogProps) {
   const supabase = createClient()
   const [allTags, setAllTags] = useState<Tag[]>([])
@@ -62,8 +51,7 @@ export function SimpleTagDialog({
 
   const loadAllTags = async () => {
     setLoading(true)
-    
-    // Get current user
+
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
       setError("You must be logged in to view tags")
@@ -71,17 +59,26 @@ export function SimpleTagDialog({
       return
     }
 
-    const { data, error } = await supabase
-      .from("tags")
-      .select("*")
+    const { data: summaries, error } = await supabase
+      .from("web_summaries")
+      .select("tags")
       .eq("user_id", user.id)
-      .order("name")
-      
+
     if (error) {
       console.error("Error loading tags:", error)
       setError("Failed to load tags")
     } else {
-      setAllTags(data as Tag[])
+      const tagsMap = new Map<string, Tag>()
+      summaries?.forEach((summary: any) => {
+        if (summary.tags && Array.isArray(summary.tags)) {
+          summary.tags.forEach((tag: any) => {
+            if (tag.id && tag.name && !tagsMap.has(tag.id)) {
+              tagsMap.set(tag.id, { id: tag.id, name: tag.name, color: tag.color || '#6b7280' })
+            }
+          })
+        }
+      })
+      setAllTags(Array.from(tagsMap.values()).sort((a, b) => a.name.localeCompare(b.name)))
     }
     setLoading(false)
   }
@@ -92,49 +89,39 @@ export function SimpleTagDialog({
     setError(null)
 
     try {
-      // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) {
         throw new Error("You must be logged in to create tags")
       }
 
-      // Check if tag already exists
-      const { data: existingTag } = await supabase
-        .from("tags")
-        .select("id, name, color")
-        .eq("name", newTagName.trim())
-        .eq("user_id", user.id)
-        .single()
+      const trimmedName = newTagName.trim().toLowerCase()
 
       let tagToAdd: Tag | null = null
+      const existingTag = allTags.find(t => t.name.toLowerCase() === trimmedName)
 
       if (existingTag) {
-        tagToAdd = existingTag as Tag
+        tagToAdd = existingTag
       } else {
-        // Create new tag with user_id
-        const { data: newTag, error: createError } = await supabase
-          .from("tags")
-          .insert({ 
-            name: newTagName.trim(), 
-            color: getRandomColor(),
-            user_id: user.id
-          })
-          .select()
-          .single()
-
-        if (createError) throw createError
-        tagToAdd = newTag as Tag
-        setAllTags(prev => [...prev, newTag])
+        tagToAdd = {
+          id: crypto.randomUUID(),
+          name: newTagName.trim(),
+          color: getRandomColor()
+        }
+        setAllTags(prev => [...prev, tagToAdd!].sort((a, b) => a.name.localeCompare(b.name)))
       }
 
       if (tagToAdd) {
         const isAlreadyLinked = currentTags.some(t => t.id === tagToAdd!.id)
         if (!isAlreadyLinked) {
-          const { error: linkError } = await supabase
-            .from("summary_tags")
-            .insert({ summary_id: summaryId, tag_id: tagToAdd.id })
-          if (linkError) throw linkError
-          onTagsUpdate([...currentTags, tagToAdd])
+          const updatedTags = [...currentTags, tagToAdd]
+          const { error: updateError } = await supabase
+            .from("web_summaries")
+            .update({ tags: updatedTags })
+            .eq("id", summaryId)
+            .eq("user_id", user.id)
+
+          if (updateError) throw updateError
+          onTagsUpdate(updatedTags)
         }
       }
       setNewTagName("")
@@ -150,15 +137,21 @@ export function SimpleTagDialog({
     setLoading(true)
     setError(null)
     try {
-      const { error: removeError } = await supabase
-        .from("summary_tags")
-        .delete()
-        .eq("summary_id", summaryId)
-        .eq("tag_id", tagId)
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        throw new Error("You must be logged in to remove tags")
+      }
 
-      if (removeError) throw removeError
+      const updatedTags = currentTags.filter(tag => tag.id !== tagId)
+      const { error: updateError } = await supabase
+        .from("web_summaries")
+        .update({ tags: updatedTags })
+        .eq("id", summaryId)
+        .eq("user_id", user.id)
 
-      onTagsUpdate(currentTags.filter(tag => tag.id !== tagId))
+      if (updateError) throw updateError
+
+      onTagsUpdate(updatedTags)
     } catch (e: any) {
       console.error("Error removing tag:", e)
       setError(`Error: ${e.message || "Failed to remove tag"}`)
@@ -171,13 +164,22 @@ export function SimpleTagDialog({
     setLoading(true)
     setError(null)
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        throw new Error("You must be logged in to add tags")
+      }
+
       const isAlreadyLinked = currentTags.some(t => t.id === tag.id)
       if (!isAlreadyLinked) {
-        const { error: linkError } = await supabase
-          .from("summary_tags")
-          .insert({ summary_id: summaryId, tag_id: tag.id })
-        if (linkError) throw linkError
-        onTagsUpdate([...currentTags, tag])
+        const updatedTags = [...currentTags, tag]
+        const { error: updateError } = await supabase
+          .from("web_summaries")
+          .update({ tags: updatedTags })
+          .eq("id", summaryId)
+          .eq("user_id", user.id)
+
+        if (updateError) throw updateError
+        onTagsUpdate(updatedTags)
       }
     } catch (e: any) {
       console.error("Error linking tag:", e)
@@ -189,14 +191,14 @@ export function SimpleTagDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md shadow-none rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
             Manage Tags
           </DialogTitle>
           <DialogDescription>
-            Add or remove tags to organize your summary
+            Add or remove tags to organize your summaries
           </DialogDescription>
         </DialogHeader>
 
@@ -207,7 +209,6 @@ export function SimpleTagDialog({
             </div>
           )}
 
-          {/* Current Tags */}
           <div>
             <h4 className="text-sm font-medium mb-2">Current Tags</h4>
             <div className="flex flex-wrap gap-2">
@@ -215,9 +216,9 @@ export function SimpleTagDialog({
                 <span className="text-sm text-muted-foreground">No tags assigned</span>
               ) : (
                 currentTags.map(tag => (
-                  <Badge 
-                    key={tag.id} 
-                    variant="secondary" 
+                  <Badge
+                    key={tag.id}
+                    variant="secondary"
                     className="flex items-center gap-1 pr-1"
                     style={{ backgroundColor: tag.color + '20', borderColor: tag.color }}
                   >
@@ -237,7 +238,6 @@ export function SimpleTagDialog({
             </div>
           </div>
 
-          {/* Add New Tag */}
           <div>
             <h4 className="text-sm font-medium mb-2">Add New Tag</h4>
             <div className="flex gap-2">
@@ -251,8 +251,8 @@ export function SimpleTagDialog({
                 disabled={loading}
                 className="flex-1"
               />
-              <Button 
-                onClick={handleCreateTag} 
+              <Button
+                onClick={handleCreateTag}
                 disabled={loading || !newTagName.trim()}
                 size="sm"
               >
@@ -261,7 +261,6 @@ export function SimpleTagDialog({
             </div>
           </div>
 
-          {/* Available Tags */}
           {allTags.length > 0 && (
             <div>
               <h4 className="text-sm font-medium mb-2">Available Tags</h4>
@@ -276,8 +275,8 @@ export function SimpleTagDialog({
                       onClick={() => handleAddExistingTag(tag)}
                       disabled={loading}
                     >
-                      <div 
-                        className="w-3 h-3 rounded-full mr-2" 
+                      <div
+                        className="w-3 h-3 rounded-full mr-2"
                         style={{ backgroundColor: tag.color }}
                       />
                       {tag.name}

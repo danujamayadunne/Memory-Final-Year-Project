@@ -28,6 +28,7 @@ export default function LoginPage() {
 
     if (error) {
       setMessage(error.message)
+      setLoading(false)
     } else {
       const urlParams = new URLSearchParams(window.location.search)
       const isExtension = urlParams.get('extension') === 'true'
@@ -42,8 +43,10 @@ export default function LoginPage() {
           }
         }
         
+        // Store in localStorage for extension to pick up
         localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
         
+        // Try to send message to extension popup
         if (window.opener) {
           window.opener.postMessage({
             type: 'MEMORY_AUTH_SUCCESS',
@@ -51,12 +54,10 @@ export default function LoginPage() {
           }, '*')
         }
         
-        alert('Successfully signed in! Returning to extension...')
-        
-        setTimeout(() => {
-          window.close()
-        }, 1000)
+        // Close immediately - no alert delay
+        window.close()
       } else {
+        // For non-extension flow, redirect to dashboard immediately
         window.location.href = "/dashboard"
       }
     }

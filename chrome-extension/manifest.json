@@ -6,7 +6,9 @@
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "contextMenus",
+    "notifications"
   ],
   "host_permissions": [
     "https://*/*",
@@ -36,5 +38,14 @@
       "resources": ["icons/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "commands": {
+    "add-to-memory": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Add current page to Memory"
+    }
+  }
 }

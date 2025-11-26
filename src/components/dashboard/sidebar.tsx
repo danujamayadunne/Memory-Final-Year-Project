@@ -1,5 +1,8 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import Link from "next/link"
+
 import { useAuth } from "@/contexts/auth-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -21,19 +24,27 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-import { 
-  BookOpen, 
-  Home, 
-  Plus, 
-  History, 
-  Settings, 
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  BookOpen,
+  Home,
+  Settings,
   LogOut,
   User,
-  Target,
-  BarChart3
+  Network,
+  Image as ImageIcon,
+  ChevronRight,
+  FileText,
 } from "lucide-react"
-import Link from "next/link"
+import { ModeToggle } from "@/components/mode-toggle"
 
 const data = {
   user: {
@@ -48,27 +59,28 @@ const data = {
       icon: Home,
     },
     {
-      title: "All Summaries",
-      url: "/dashboard/summaries",
+      title: "Summaries",
       icon: BookOpen,
+      items: [
+        {
+          title: "Text Summaries",
+          url: "/dashboard/summaries",
+          icon: FileText,
+        },
+        {
+          title: "Image Summaries",
+          url: "/dashboard/images",
+          icon: ImageIcon,
+        },
+      ],
     },
     {
-      title: "Learning Paths",
-      url: "/dashboard/learning-paths",
-      icon: Target,
-    },
-    {
-      title: "Add Summary",
-      url: "/dashboard/add",
-      icon: Plus,
+      title: "Map",
+      url: "/dashboard/map",
+      icon: Network,
     },
   ],
   navSecondary: [
-    {
-      title: "Insights",
-      url: "/dashboard/insights",
-      icon: BarChart3,
-    },
     {
       title: "Settings",
       url: "/dashboard/settings",
@@ -79,6 +91,14 @@ const data = {
 
 export function AppSidebar() {
   const { user, signOut } = useAuth()
+  const [activePath, setActivePath] = useState("/")
+  const [openSections, setOpenSections] = useState<Record<string, boolean | undefined>>({})
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setActivePath(window.location.pathname || "/")
+    }
+  }, [])
 
   return (
     <Sidebar variant="inset">
@@ -98,16 +118,71 @@ export function AppSidebar() {
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {data.navMain.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {data.navMain.map((item) => {
+                if (item.items) {
+                  const isParentActive = item.items.some((sub) => activePath.startsWith(sub.url))
+                  const derivedOpen = openSections[item.title]
+                  const isOpen = typeof derivedOpen === "boolean" ? derivedOpen : isParentActive
+                  return (
+                    <Collapsible
+                      key={item.title}
+                      asChild
+                      open={isOpen}
+                      onOpenChange={(open) => {
+                        setOpenSections((prev) => ({
+                          ...prev,
+                          [item.title]: open,
+                        }))
+                      }}
+                      className="group/collapsible"
+                    >
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            type="button"
+                            className="justify-between"
+                            isActive={false}
+                            data-state={isParentActive ? "active" : undefined}
+                          >
+                            <span className="flex items-center gap-2">
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </span>
+                            <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.items.map((sub) => (
+                              <SidebarMenuSubItem key={sub.title}>
+                                <SidebarMenuSubButton asChild isActive={activePath.startsWith(sub.url)}>
+                                  <Link href={sub.url}>
+                                    {sub.icon && (
+                                      <sub.icon className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                    <span>{sub.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  )
+                }
+
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={activePath === item.url}>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -130,6 +205,9 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        <div className="px-2 py-2 mb-2">
+          <ModeToggle />
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>

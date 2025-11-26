@@ -2,7 +2,6 @@
 
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Plus, Search } from "lucide-react"
 
 export function AppHeader() {
@@ -18,11 +17,11 @@ export function AppHeader() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Search className="h-4 w-4 mr-2" />
+            <Search className="h-4 w-4" />
             Search
           </Button>
           <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4" />
             Add Summary
           </Button>
         </div>

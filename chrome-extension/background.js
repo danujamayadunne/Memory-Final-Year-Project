@@ -1,22 +1,284 @@
-// Background script for Memory Chrome Extension
+function showPageIndicator(message, color) {
+  const existing = document.getElementById('memory-extension-toast');
+  if (existing) {
+    existing.remove();
+  }
 
-// Listen for extension installation
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    
-    // Open welcome page
-    chrome.tabs.create({
-      url: chrome.runtime.getURL('welcome.html')
+  const indicator = document.createElement('div');
+  indicator.id = 'memory-extension-toast';
+  indicator.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${color};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 90px;
+    font-size: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 500;
+    z-index: 999999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s ease-out;
+    max-width: 300px;
+    word-wrap: break-word;
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  indicator.textContent = message;
+  document.body.appendChild(indicator);
+
+  setTimeout(() => {
+    indicator.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => {
+      if (indicator.parentNode) {
+        indicator.remove();
+      }
+    }, 300);
+  }, 4000);
+}
+
+function createContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'saveImageToMemory',
+      title: 'Save image to Memory',
+      contexts: ['image']
     });
+  });
+}
+
+createContextMenu();
+
+chrome.runtime.onStartup.addListener(() => {
+  createContextMenu();
+});
+
+chrome.runtime.onInstalled.addListener((details) => {
+  createContextMenu();
+});
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'add-to-memory') {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (!tab || !tab.url) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: showPageIndicator,
+            args: ['Unable to get current page information', '#ef4444']
+          });
+        } catch (e) {
+        }
+        return;
+      }
+
+      if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: showPageIndicator,
+            args: ['Cannot add this page to Memory', '#ef4444']
+          });
+        } catch (e) {
+        }
+        return;
+      }
+
+      const result = await chrome.storage.local.get(['memory_access_token']);
+      const token = result.memory_access_token;
+
+      if (!token) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: showPageIndicator,
+            args: ['Please sign in to add pages to Memory', '#ef4444']
+          });
+        } catch (e) {
+        }
+        return;
+      }
+
+      chrome.action.setBadgeText({ text: '...', tabId: tab.id });
+      chrome.action.setBadgeBackgroundColor({ color: '#3b82f6', tabId: tab.id });
+
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: showPageIndicator,
+          args: ['Adding to Memory...', '#3b82f6']
+        });
+      } catch (e) {
+      }
+
+      const response = await fetch('http://localhost:3000/api/ai/text', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          url: tab.url,
+          format: 'bullets'
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await chrome.storage.local.set({
+          'memory_auth_timestamp': Date.now()
+        });
+
+        chrome.action.setBadgeText({ text: '✓', tabId: tab.id });
+        chrome.action.setBadgeBackgroundColor({ color: '#10b981', tabId: tab.id });
+
+        setTimeout(() => {
+          chrome.action.setBadgeText({ text: '', tabId: tab.id });
+        }, 3000);
+
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: showPageIndicator,
+            args: ['✓ Added to Memory!', '#10b981']
+          });
+        } catch (e) {
+        }
+      } else {
+        throw new Error(data.error || 'Failed to add to Memory');
+      }
+    } catch (error) {
+      console.error('Error adding to Memory via shortcut:', error);
+
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) {
+          chrome.action.setBadgeText({ text: '!', tabId: tab.id });
+          chrome.action.setBadgeBackgroundColor({ color: '#ef4444', tabId: tab.id });
+
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: showPageIndicator,
+            args: ['Error: ' + (error.message || 'Failed to add to Memory'), '#ef4444']
+          });
+
+          setTimeout(() => {
+            chrome.action.setBadgeText({ text: '', tabId: tab.id });
+          }, 3000);
+        }
+      } catch (e) {
+      }
+    }
   }
 });
 
-// Listen for messages from popup or content scripts
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === 'saveImageToMemory' && tab) {
+    const imageUrl = info.srcUrl;
+    const pageUrl = info.pageUrl || tab.url;
+
+    if (!imageUrl) {
+      return;
+    }
+
+    const result = await chrome.storage.local.get(['memory_access_token']);
+    const token = result.memory_access_token;
+
+    if (!token) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: showPageIndicator,
+          args: ['Please sign in to save images', '#ef4444']
+        });
+      } catch (e) {
+      }
+      return;
+    }
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: showPageIndicator,
+        args: ['Saving image to Memory...', '#3b82f6']
+      });
+    } catch (e) {
+    }
+
+    try {
+      const response = await fetch('http://localhost:3000/api/ai/images', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          imageUrl,
+          sourceUrl: pageUrl || null
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: showPageIndicator,
+            args: ['✓ Image saved to Memory!', '#10b981']
+          });
+        } catch (e) {
+        }
+      } else {
+        throw new Error(data.error || 'Failed to save image');
+      }
+    } catch (error) {
+      console.error('Error saving image to Memory:', error);
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: showPageIndicator,
+          args: ['Error: ' + (error.message || 'Failed to save image'), '#ef4444']
+        });
+      } catch (e) {
+      }
+    }
+  }
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
     case 'GET_TAB_INFO':
       getCurrentTabInfo(sendResponse);
-      return true; // Keep message channel open for async response
+      return true;
       
     case 'AUTH_SUCCESS':
       handleAuthSuccess(message.data);
@@ -24,7 +286,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
     case 'ADD_TO_MEMORY':
       addToMemory(message.url, sendResponse);
-      return true; // Keep message channel open for async response
+      return true;
       
     case 'MEMORY_AUTH_SUCCESS':
       handleAuthSuccess(message.data);
@@ -56,13 +318,12 @@ async function getCurrentTabInfo(sendResponse) {
 
 async function handleAuthSuccess(userData) {
   try {
-    // Store user data in local storage
     await chrome.storage.local.set({
       'memory_access_token': userData.access_token,
-      'memory_user_data': userData.user
+      'memory_user_data': userData.user,
+      'memory_auth_timestamp': Date.now()
     });
     
-    // Notify popup if it's open
     chrome.runtime.sendMessage({
       type: 'AUTH_SUCCESS',
       data: userData
@@ -75,7 +336,6 @@ async function handleAuthSuccess(userData) {
 
 async function addToMemory(url, sendResponse) {
   try {
-    // Get stored auth token
     const result = await chrome.storage.local.get(['memory_access_token']);
     const token = result.memory_access_token;
     
@@ -87,8 +347,7 @@ async function addToMemory(url, sendResponse) {
       return;
     }
     
-    // Make API call to add URL to Memory
-    const response = await fetch('http://localhost:3000/api/summarize', {
+    const response = await fetch('http://localhost:3000/api/ai/text', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -117,24 +376,95 @@ async function addToMemory(url, sendResponse) {
   }
 }
 
-// Listen for tab updates to update badge
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
     updateBadge(tab.url);
+
+    if (tab.url && (tab.url.includes('/auth/login') || tab.url.includes('/auth/callback') || tab.url.includes('/auth/signup'))) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          func: () => {
+            return localStorage.getItem('memory_extension_auth');
+          }
+        });
+
+        if (results && results[0] && results[0].result) {
+          const authData = JSON.parse(results[0].result);
+
+          await chrome.storage.local.set({
+            'memory_access_token': authData.access_token,
+            'memory_user_data': authData.user,
+            'memory_auth_timestamp': Date.now()
+          });
+
+          chrome.runtime.sendMessage({
+            type: 'AUTH_SUCCESS',
+            data: authData
+          });
+        }
+      } catch (error) {
+      }
+    }
   }
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  setTimeout(async () => {
+    try {
+
+      const tabs = await chrome.tabs.query({});
+      for (const tab of tabs) {
+        if (tab.url && (tab.url.startsWith('http://localhost:3000') || tab.url.startsWith('http://127.0.0.1:3000'))) {
+          try {
+            const results = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: () => {
+                return localStorage.getItem('memory_extension_auth');
+              }
+            });
+
+            if (results && results[0] && results[0].result) {
+              const authData = JSON.parse(results[0].result);
+
+              await chrome.storage.local.set({
+                'memory_access_token': authData.access_token,
+                'memory_user_data': authData.user,
+                'memory_auth_timestamp': Date.now()
+              });
+
+              chrome.runtime.sendMessage({
+                type: 'AUTH_SUCCESS',
+                data: authData
+              });
+
+              await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                  localStorage.removeItem('memory_extension_auth');
+                }
+              });
+
+              break;
+            }
+          } catch (error) {
+            continue;
+          }
+        }
+      }
+    } catch (error) {
+    }
+  }, 500);
 });
 
 async function updateBadge(url) {
   try {
-    // Check if user is authenticated
     const result = await chrome.storage.local.get(['memory_access_token']);
     
     if (result.memory_access_token) {
-      // Set badge to show extension is active
       chrome.action.setBadgeText({ text: 'M' });
       chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' });
     } else {
-      // Clear badge if not authenticated
       chrome.action.setBadgeText({ text: '' });
     }
   } catch (error) {

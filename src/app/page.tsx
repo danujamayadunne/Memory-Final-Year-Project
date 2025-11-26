@@ -63,7 +63,7 @@ export default function Home() {
             <span className="text-primary block">intelligent summaries</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Memory uses advanced AI to extract and summarize the most important information from web pages and YouTube videos, saving you time and helping you retain knowledge.
+            Memory uses advanced AI to extract and summarize the most important information from web pages, saving you time and helping you retain knowledge.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild>

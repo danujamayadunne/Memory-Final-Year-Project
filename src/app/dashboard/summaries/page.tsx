@@ -9,28 +9,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { 
-  BookOpen, 
-  Search, 
-  Tag, 
-  FolderOpen, 
-  Brain, 
-  Target,
-  TrendingUp,
-  Clock,
-  Star,
-  ChevronRight,
-  ExternalLink,
-  Trash2,
-} from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { BookOpen, Search, Clock, ExternalLink, Trash2, MessageCircle, Link as LinkIcon, Tags, Loader2, Sparkles } from "lucide-react"
 import { ChatSheet } from "@/components/dashboard/chat-sheet"
+import { FormattedSummary } from "@/components/formatted-summary"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { findRelatedSummariesWithAI, type RelatedSummaryWithScore } from "@/lib/similarity"
+import { SimpleTagDialog } from "@/components/dashboard/simple-tag-dialog"
 import Link from "next/link"
 
 type SummaryItem = {
@@ -39,21 +26,7 @@ type SummaryItem = {
   summary: string
   title?: string
   created_at: string
-  category_id?: string
-  difficulty_level?: string
-  mastery_level?: string
-  study_time_estimate?: number
-  last_reviewed_at?: string
-  review_count?: number
   tags?: Array<{ id: string; name: string; color: string }>
-  category?: { id: string; name: string; color: string }
-}
-
-type Category = {
-  id: string
-  name: string
-  description?: string
-  color: string
 }
 
 type Tag = {
@@ -65,18 +38,20 @@ type Tag = {
 export default function SummariesPage() {
   const { user, loading: authLoading } = useAuth()
   const [items, setItems] = useState<SummaryItem[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [selectedTag, setSelectedTag] = useState<string>("")
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("")
-  const [selectedMastery, setSelectedMastery] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<SummaryItem[]>([])
+  const [useSemanticSearch, setUseSemanticSearch] = useState(true)
   const [selectedItem, setSelectedItem] = useState<SummaryItem | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
-  const [chatType, setChatType] = useState<'questions' | 'gaps' | 'path' | 'general'>('general')
+  const [relatedTopics, setRelatedTopics] = useState<RelatedSummaryWithScore<SummaryItem>[]>([])
+  const [showRelatedTopics, setShowRelatedTopics] = useState(false)
+  const [loadingRelatedTopics, setLoadingRelatedTopics] = useState(false)
+  const [showAddTagsModal, setShowAddTagsModal] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -84,35 +59,87 @@ export default function SummariesPage() {
     }
   }, [user])
 
+  const performTextSearch = (query: string, items: SummaryItem[]): SummaryItem[] => {
+    const searchLower = query.toLowerCase().trim()
+    if (!searchLower) return items
+
+    return items.filter(item => {
+      const titleMatch = item.title?.toLowerCase().includes(searchLower) || false
+      const summaryMatch = item.summary.toLowerCase().includes(searchLower)
+      const urlMatch = item.url.toLowerCase().includes(searchLower)
+      const tagMatch = item.tags?.some(tag => tag.name.toLowerCase().includes(searchLower)) || false
+      return titleMatch || summaryMatch || urlMatch || tagMatch
+    })
+  }
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+
+    if (!useSemanticSearch) {
+      setSearching(false)
+      const textResults = performTextSearch(searchTerm, items)
+      setSearchResults(textResults)
+      return
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await fetch("/api/ai/text/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: searchTerm.trim(), limit: 100 }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setSearchResults(data.results || [])
+        } else {
+          console.error("Search failed:", await res.text())
+          setSearchResults([])
+        }
+      } catch (error) {
+        console.error("Error performing vector search:", error)
+        setSearchResults([])
+      } finally {
+        setSearching(false)
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, useSemanticSearch, items])
+
   const loadData = async () => {
     setLoading(true)
     const supabase = createClient()
-    
+
     try {
 
       const { data: summaries } = await supabase
         .from("web_summaries")
-        .select(`
-          id, url, summary, title, created_at, category_id, difficulty_level, 
-          mastery_level, study_time_estimate, last_reviewed_at, review_count,
-          tags:summary_tags(tag:tags(id, name, color)),
-          category:categories(id, name, color)
-        `)
+        .select("id, url, summary, title, created_at, tags")
         .order("created_at", { ascending: false })
 
-      const { data: categoriesData } = await supabase
-        .from("categories")
-        .select("*")
-        .order("name")
+      if (summaries) {
 
-      const { data: tagsData } = await supabase
-        .from("tags")
-        .select("*")
-        .order("name")
+        const allTags = new Map<string, Tag>()
+        summaries.forEach(item => {
+          if (item.tags && Array.isArray(item.tags)) {
+            item.tags.forEach((tag: any) => {
+              if (tag.id && !allTags.has(tag.id)) {
+                allTags.set(tag.id, { id: tag.id, name: tag.name || '', color: tag.color || '#6b7280' })
+              }
+            })
+          }
+        })
+        setTags(Array.from(allTags.values()).sort((a, b) => a.name.localeCompare(b.name)))
 
-      if (summaries) setItems(summaries as SummaryItem[])
-      if (categoriesData) setCategories(categoriesData)
-      if (tagsData) setTags(tagsData)
+        setItems(summaries as SummaryItem[])
+      }
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
@@ -120,10 +147,31 @@ export default function SummariesPage() {
     }
   }
 
-  const handleSuggestionClick = (summary: SummaryItem, type: 'questions' | 'gaps' | 'path') => {
+  const handleAskQuestion = (summary: SummaryItem) => {
     setSelectedItem(summary)
-    setChatType(type)
     setChatOpen(true)
+  }
+
+  const handleSeeRelatedTopics = async (summary: SummaryItem) => {
+    setSelectedItem(summary)
+    setShowRelatedTopics(true)
+    setLoadingRelatedTopics(true)
+    setRelatedTopics([])
+
+    try {
+      const related = await findRelatedSummariesWithAI(summary, items, 5, 0.5)
+      setRelatedTopics(related)
+    } catch (error) {
+      console.error("Error finding related topics:", error)
+      setRelatedTopics([])
+    } finally {
+      setLoadingRelatedTopics(false)
+    }
+  }
+
+  const handleAddTags = async (summary: SummaryItem) => {
+    setSelectedItem(summary)
+    setShowAddTagsModal(true)
   }
 
   const handleDelete = async (id: string) => {
@@ -139,38 +187,12 @@ export default function SummariesPage() {
     }
   }
 
-  const filteredItems = items.filter(item => {
-    const matchesSearch = !searchTerm ||
-      item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.url.toLowerCase().includes(searchTerm.toLowerCase())
+  const itemsToFilter = searchTerm.trim() ? searchResults : items
 
-    const matchesCategory = !selectedCategory || selectedCategory === "all" || item.category_id === selectedCategory
+  const filteredItems = itemsToFilter.filter(item => {
     const matchesTag = !selectedTag || selectedTag === "all" || item.tags?.some(tag => tag.id === selectedTag)
-    const matchesDifficulty = !selectedDifficulty || selectedDifficulty === "all" || item.difficulty_level === selectedDifficulty
-    const matchesMastery = !selectedMastery || selectedMastery === "all" || item.mastery_level === selectedMastery
-
-    return matchesSearch && matchesCategory && matchesTag && matchesDifficulty && matchesMastery
+    return matchesTag
   })
-
-  const getMasteryColor = (level?: string) => {
-    switch (level) {
-      case 'mastered': return 'bg-green-100 text-green-800'
-      case 'practicing': return 'bg-blue-100 text-blue-800'
-      case 'learning': return 'bg-yellow-100 text-yellow-800'
-      case 'not_started': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getDifficultyColor = (level?: string) => {
-    switch (level) {
-      case 'advanced': return 'bg-red-100 text-red-800'
-      case 'intermediate': return 'bg-orange-100 text-orange-800'
-      case 'beginner': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
 
   if (authLoading) {
     return (
@@ -205,126 +227,62 @@ export default function SummariesPage() {
     <DashboardLayout>
       <div className="space-y-6">
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium tracking-tight">Total Summaries</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tracking-tight">{items.length}</div>
-              <p className="text-xs text-muted-foreground tracking-tight">
-                Web pages and videos
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium tracking-tight">Categories</CardTitle>
-              <FolderOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tracking-tight">{categories.length}</div>
-              <p className="text-xs text-muted-foreground tracking-tight">
-                Organized topics
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium tracking-tight">Mastered</CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tracking-tight">
-                {items.filter(item => item.mastery_level === 'mastered').length}
-              </div>
-              <p className="text-xs text-muted-foreground tracking-tight">
-                Fully learned
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium tracking-tight">Study Time</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tracking-tight">
-                {Math.round(items.reduce((total, item) => total + (item.study_time_estimate || 0), 0) / 60)}h
-              </div>
-              <p className="text-xs text-muted-foreground tracking-tight">
-                Total time
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 tracking-tight">
               <Search className="h-5 w-5" />
               Search & Filter
             </CardTitle>
+            <CardDescription className="tracking-tight">
+              {useSemanticSearch ? "Semantic search powered by AI" : "Text-based search"}. Filter by tags.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <Input
-                placeholder="Search your summaries..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 tracking-tight"
-              />
+            <div className="flex w-full gap-3">
+              <div className="flex-1 relative">
+                <Input
+                  placeholder={useSemanticSearch ? "Search by meaning, not just keywords..." : "Search titles, summaries, URLs, tags..."}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`tracking-tight ${searching ? "opacity-70" : ""}`}
+                />
+                {searching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <div className="w-48">
+                <Select value={selectedTag} onValueChange={setSelectedTag}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Tags" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Tags</SelectItem>
+                    {tags.map(tag => (
+                      <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-4">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={selectedTag} onValueChange={setSelectedTag}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Tags" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Tags</SelectItem>
-                  {tags.map(tag => (
-                    <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Difficulties" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Difficulties</SelectItem>
-                  <SelectItem value="beginner">Beginner</SelectItem>
-                  <SelectItem value="intermediate">Intermediate</SelectItem>
-                  <SelectItem value="advanced">Advanced</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select value={selectedMastery} onValueChange={setSelectedMastery}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Mastery Levels" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Mastery Levels</SelectItem>
-                  <SelectItem value="not_started">Not Started</SelectItem>
-                  <SelectItem value="learning">Learning</SelectItem>
-                  <SelectItem value="practicing">Practicing</SelectItem>
-                  <SelectItem value="mastered">Mastered</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-between pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="semantic-search"
+                  checked={useSemanticSearch}
+                  onCheckedChange={setUseSemanticSearch}
+                />
+                <Label htmlFor="semantic-search" className="text-sm font-normal cursor-pointer flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Semantic Search
+                </Label>
+              </div>
+              {searchTerm.trim() && (
+                <span className="text-xs text-muted-foreground">
+                  {searching ? "Searching..." : `${filteredItems.length} result${filteredItems.length !== 1 ? 's' : ''}`}
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -335,33 +293,49 @@ export default function SummariesPage() {
               Your Summaries ({filteredItems.length} items)
             </h2>
           </div>
-          
+
           {loading ? (
             <div className="grid gap-4">
               {[...Array(3)].map((_, i) => (
                 <Card key={i}>
-                  <CardContent className="p-6">
-                    <div className="space-y-3">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-4 w-1/2" />
-                      <Skeleton className="h-20 w-full" />
-                      <div className="flex gap-2">
-                        <Skeleton className="h-6 w-16" />
-                        <Skeleton className="h-6 w-20" />
+                  <CardContent>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-3/4 space-y-3">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-9 w-full" />
+                        <div className="flex gap-2">
+                          <Skeleton className="h-6 w-16" />
+                          <Skeleton className="h-6 w-20" />
+                        </div>
+                      </div>
+                      <div className="w-1/4 flex items-end justify-end flex-col gap-2">
+                        <Skeleton className="h-6 w-[90px]" />
+                        <Skeleton className="h-6 w-[90px]" />
+                        <Skeleton className="h-6 w-[90px]" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+          ) : (searching && searchTerm.trim()) ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2 tracking-tight">Searching...</h3>
+                <p className="text-muted-foreground mb-4 tracking-tight">
+                  {useSemanticSearch ? "Finding semantically similar content..." : "Searching through summaries..."}
+                </p>
+              </CardContent>
+            </Card>
           ) : filteredItems.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2 tracking-tight">No summaries found</h3>
                 <p className="text-muted-foreground mb-4 tracking-tight">
-                  {searchTerm || selectedCategory || selectedTag 
-                    ? "Try adjusting your filters" 
+                  {searchTerm || selectedTag
+                    ? "Try adjusting your filters or search terms"
                     : "Start by adding some content to your knowledge base"
                   }
                 </p>
@@ -371,98 +345,66 @@ export default function SummariesPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
+            <div className="space-y-4">
               {filteredItems.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
-                  setSelectedItem(item)
-                  setShowModal(true)
-                }}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold truncate tracking-tight">
-                            {item.title || item.url}
-                          </h3>
-                          {item.difficulty_level && (
-                            <Badge className={getDifficultyColor(item.difficulty_level)}>
-                              {item.difficulty_level}
-                            </Badge>
-                          )}
-                          {item.mastery_level && (
-                            <Badge className={getMasteryColor(item.mastery_level)}>
-                              {item.mastery_level}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-3 tracking-tight">
-                          {item.summary}
-                        </p>
-                        
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {item.study_time_estimate ? `${item.study_time_estimate}m` : 'No estimate'}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Target className="h-3 w-3" />
-                            {item.review_count || 0} reviews
-                          </span>
-                          {item.last_reviewed_at && (
-                            <span>
-                              Last reviewed: {new Date(item.last_reviewed_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          {item.category && (
-                            <Badge key={item.category.id} variant="outline" style={{ borderColor: item.category.color }}>
-                              {item.category.name}
-                            </Badge>
-                          )}
-                          {item.tags?.map(tag => (
-                            <Badge key={tag.id} variant="secondary" style={{ backgroundColor: tag.color + '20' }}>
-                              {tag.name}
-                            </Badge>
-                          ))}
-                        </div>
+                <div key={item.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setSelectedItem(item); setShowModal(true) }}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <a href={item.url} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate tracking-tight max-w-[900px]" onClick={(e) => e.stopPropagation()}>
+                          {item.title || item.url}
+                        </a>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                       </div>
-                      
-                      <div className="flex flex-col gap-2">
+                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2 tracking-tight">
+                        {item.summary}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {new Date(item.created_at).toLocaleString()}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        {item.tags?.map(tag => (
+                          <Badge key={tag.id} variant="outline" style={{ borderColor: `${tag.color}5A` }}>
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAskQuestion(item)
+                        }}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Ask Question
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSeeRelatedTopics(item)
+                        }}
+                      >
+                        <LinkIcon className="h-4 w-4" />
+                        Related Topics
+                      </Button>
+                      <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleSuggestionClick(item, 'questions')
+                            handleAddTags(item)
                           }}
                         >
-                          <Brain className="h-4 w-4 mr-1" />
-                          Questions
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleSuggestionClick(item, 'gaps')
-                          }}
-                        >
-                          <TrendingUp className="h-4 w-4 mr-1" />
-                          Gaps
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleSuggestionClick(item, 'path')
-                          }}
-                        >
-                          <ChevronRight className="h-4 w-4 mr-1" />
-                          Path
+                          <Tags className="h-4 w-4" />
+                          Add Tags
                         </Button>
                         <Button
                           variant="outline"
@@ -477,82 +419,187 @@ export default function SummariesPage() {
                         </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
 
-        {showModal && selectedItem && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="tracking-tight">{selectedItem.title || selectedItem.url}</CardTitle>
-                  <CardDescription className="tracking-tight">
-                    <a 
-                      href={selectedItem.url} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="text-primary hover:underline flex items-center gap-1"
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-h-[90vh] rounded-2xl min-w-[800px] shadow-none flex flex-col bg-white/5 backdrop-blur-lg border border-white/10 text-white">
+            <DialogHeader className="flex-shrink-0">
+              <DialogTitle className="text-xl font-semibold tracking-tight">
+                {selectedItem?.title || selectedItem?.url}
+              </DialogTitle>
+              <DialogDescription>
+                <a href={selectedItem?.url} target="_blank" rel="noreferrer" className="text-white hover:underline flex items-center gap-1">
+                  {selectedItem?.url}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold tracking-tight">Summary</h3>
+                <div className="prose prose-sm max-w-none text-white">
+                  <FormattedSummary
+                    content={selectedItem?.summary || ""}
+                    className="text-white/90"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-shrink-0 flex flex-col items-start gap-2 justify-between pt-4 border-t border-white/10 mt-4">
+              <div className="flex flex-wrap gap-2">
+                {selectedItem?.tags?.map(tag => (
+                  <Badge key={tag.id} variant="secondary" className="px-3 py-1 font-medium">
+                    {tag.name}
+                  </Badge>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground px-2">
+                Created: {selectedItem && new Date(selectedItem.created_at).toLocaleString()}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showRelatedTopics} onOpenChange={(open) => {
+          setShowRelatedTopics(open)
+          if (!open) {
+            setLoadingRelatedTopics(false)
+            setRelatedTopics([])
+          }
+        }}>
+          <DialogContent className="max-h-[90vh] rounded-2xl min-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="tracking-tight">Related Topics</DialogTitle>
+              <DialogDescription className="tracking-tight">
+                Topics related to "{selectedItem?.title || selectedItem?.url}"
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {loadingRelatedTopics ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Sparkles className="h-8 w-8 text-primary animate-pulse mb-[9px]" />
+                  <p className="text-muted-foreground text-center tracking-tight">
+                    Calculating similarity...
+                  </p>
+                  <p className="text-xs text-muted-foreground tracking-tight">
+                    Finding related summaries using AI
+                  </p>
+                </div>
+              ) : relatedTopics.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8 tracking-tight">
+                  No related topics found
+                </p>
+              ) : (
+                relatedTopics.map(({ item: topic, score }) => {
+                  const relevancePercent = Math.round(score * 100);
+                  const circumference = 2 * Math.PI * 16;
+                  const offset = circumference - (relevancePercent / 100) * circumference;
+
+                  const getRelevanceColor = (percent: number) => {
+                    if (percent >= 70) return 'text-green-500';
+                    if (percent >= 50) return 'text-yellow-500';
+                    if (percent >= 30) return 'text-orange-500';
+                    return 'text-gray-400';
+                  };
+
+                  return (
+                    <div
+                      key={topic.id}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => {
+                        setShowRelatedTopics(false)
+                        setSelectedItem(topic)
+                        setShowModal(true)
+                      }}
                     >
-                      {selectedItem.url}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </CardDescription>
-                </div>
-                <Button variant="ghost" onClick={() => setShowModal(false)}>
-                  ×
-                </Button>
-              </CardHeader>
-              <CardContent className="overflow-y-auto max-h-[60vh]">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    {selectedItem.difficulty_level && (
-                      <Badge className={getDifficultyColor(selectedItem.difficulty_level)}>
-                        {selectedItem.difficulty_level}
-                      </Badge>
-                    )}
-                    {selectedItem.mastery_level && (
-                      <Badge className={getMasteryColor(selectedItem.mastery_level)}>
-                        {selectedItem.mastery_level}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="prose max-w-none">
-                    <h4 className="font-semibold mb-2 tracking-tight">Summary:</h4>
-                    <p className="whitespace-pre-wrap tracking-tight leading-relaxed">
-                      {selectedItem.summary}
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {selectedItem.study_time_estimate ? `${selectedItem.study_time_estimate}m` : 'No estimate'}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Target className="h-4 w-4" />
-                      {selectedItem.review_count || 0} reviews
-                    </span>
-                    <span>
-                      Created: {new Date(selectedItem.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <a
+                              href={topic.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary hover:underline truncate tracking-tight"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {topic.title || topic.url}
+                            </a>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2 tracking-tight">
+                            {topic.summary}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {topic.tags?.map(tag => (
+                              <Badge key={tag.id} variant="outline" style={{ borderColor: `${tag.color}5A` }}>
+                                {tag.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <div className="relative w-16 h-16">
+                            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                className="text-gray-200 dark:text-gray-700"
+                              />
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={offset}
+                                className={getRelevanceColor(relevancePercent)}
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-xs font-semibold text-foreground">
+                                {relevancePercent}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <ChatSheet
           summary={selectedItem}
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
-          chatType={chatType}
         />
+
+        <SimpleTagDialog summaryId={selectedItem?.id || ""} currentTags={selectedItem?.tags || []} onTagsUpdate={(updatedTags) => {
+          setItems(prev => prev.map(item =>
+            item.id === selectedItem?.id
+              ? { ...item, tags: updatedTags }
+              : item
+          ))
+          setSelectedItem(prev => prev ? { ...prev, tags: updatedTags } : null)
+        }} isOpen={showAddTagsModal} onClose={() => setShowAddTagsModal(false)} />
+
       </div>
     </DashboardLayout>
   )

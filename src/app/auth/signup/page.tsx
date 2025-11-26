@@ -35,27 +35,31 @@ export default function SignupPage() {
 
     if (error) {
       setMessage(error.message)
+      setLoading(false)
     } else {
-      // Check if this is coming from Chrome extension
+
       const urlParams = new URLSearchParams(window.location.search)
       const isExtension = urlParams.get('extension') === 'true'
-      
-      if (isExtension && data.session) {
-        // Send auth data to extension
+
+      if (isExtension && data.session && data.user) {
+        const authData = {
+          access_token: data.session.access_token,
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0]
+          }
+        }
+
+        localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
+
         if (window.opener) {
           window.opener.postMessage({
             type: 'MEMORY_AUTH_SUCCESS',
-            data: {
-              access_token: data.session.access_token,
-              user: {
-                id: data.user.id,
-                email: data.user.email,
-                name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0]
-              }
-            }
+            data: authData
           }, '*')
         }
-        // Close the window
+
         window.close()
       } else {
         setMessage("Check your email for the confirmation link!")
@@ -66,15 +70,14 @@ export default function SignupPage() {
 
   const handleGoogleSignUp = async () => {
     setLoading(true)
-    
-    // Check if this is coming from Chrome extension
+
     const urlParams = new URLSearchParams(window.location.search)
     const isExtension = urlParams.get('extension') === 'true'
-    
-    const redirectTo = isExtension 
+
+    const redirectTo = isExtension
       ? `${window.location.origin}/auth/callback?extension=true`
       : `${window.location.origin}/dashboard`
-    
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -151,7 +154,7 @@ export default function SignupPage() {
               {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
-          
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full" />
@@ -162,7 +165,7 @@ export default function SignupPage() {
               </span>
             </div>
           </div>
-          
+
           <Button
             variant="outline"
             className="w-full"
@@ -189,7 +192,7 @@ export default function SignupPage() {
             </svg>
             Continue with Google
           </Button>
-          
+
           <div className="text-center text-sm">
             Already have an account?{" "}
             <Link href="/auth/login" className="text-primary hover:underline">

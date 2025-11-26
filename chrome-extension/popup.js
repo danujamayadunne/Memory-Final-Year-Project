@@ -1,7 +1,8 @@
 const API_BASE_URL = 'http://localhost:3000';
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'memory_access_token',
-  USER_DATA: 'memory_user_data'
+  USER_DATA: 'memory_user_data',
+  AUTH_TIMESTAMP: 'memory_auth_timestamp'
 };
 
 const loginSection = document.getElementById('loginSection');
@@ -15,14 +16,19 @@ const signupBtn = document.getElementById('signupBtn');
 const addToMemoryBtn = document.getElementById('addToMemoryBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const viewMemoryBtn = document.getElementById('viewMemoryBtn');
+const formatBulletsBtn = document.getElementById('formatBullets');
+const formatParagraphBtn = document.getElementById('formatParagraph');
 
 const siteUrl = document.getElementById('siteUrl');
 const userName = document.getElementById('userName');
 const userEmail = document.getElementById('userEmail');
 const userAvatar = document.getElementById('userAvatar');
+const loadingText = document.getElementById('loadingText');
 
 let currentTab = null;
 let isAuthenticated = false;
+let authCheckInProgress = false;
+let summaryFormat = 'bullets';
 
 document.addEventListener('DOMContentLoaded', async () => {
   await initializePopup();
@@ -33,51 +39,82 @@ window.addEventListener('beforeunload', () => {
 });
 
 async function initializePopup() {
+
   try {
+
+    showLoadingState();
+
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTab = tab;
-    
-    siteUrl.textContent = tab.url;
-    
-    await checkForAuthInTab(tab.id);
-    
-    await checkAuthentication();
-    
+
+    if (tab.url) {
+      siteUrl.textContent = tab.url;
+    }
+
     setupEventListeners();
-    
+
+    await checkAuthentication();
+
+    const foundAuth = await checkForAuthInAllTabs();
+    if (foundAuth) {
+      await checkAuthentication();
+    }
+
   } catch (error) {
     console.error('Error initializing popup:', error);
     showError('Failed to initialize extension');
+    showLoginSection();
   }
 }
 
-async function checkForAuthInTab(tabId) {
+async function checkForAuthInAllTabs() {
+
   try {
 
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      func: () => {
-        return localStorage.getItem('memory_extension_auth');
-      }
-    });
-    
-    if (results && results[0] && results[0].result) {
-      const authData = JSON.parse(results[0].result);
-      
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.ACCESS_TOKEN]: authData.access_token,
-        [STORAGE_KEYS.USER_DATA]: authData.user
-      });
-      
-      await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        func: () => {
-          localStorage.removeItem('memory_extension_auth');
+    const tabs = await chrome.tabs.query({});
+
+    const relevantTabs = tabs
+      .filter(tab => tab.url && (tab.url.startsWith('http://localhost:3000') || tab.url.startsWith('http://127.0.0.1:3000')))
+      .slice(0, 10);
+
+    const checkPromises = relevantTabs.map(async (tab) => {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            return localStorage.getItem('memory_extension_auth');
+          }
+        });
+
+        if (results && results[0] && results[0].result) {
+          const authData = JSON.parse(results[0].result);
+
+          await chrome.storage.local.set({
+            [STORAGE_KEYS.ACCESS_TOKEN]: authData.access_token,
+            [STORAGE_KEYS.USER_DATA]: authData.user,
+            [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now()
+          });
+
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              localStorage.removeItem('memory_extension_auth');
+            }
+          });
+
+          return true;
         }
-      });
-      
-    }
+      } catch (error) {
+        return false;
+      }
+      return false;
+    });
+
+    const results = await Promise.all(checkPromises);
+    return results.some(result => result === true);
   } catch (error) {
+    console.error('Error checking for auth in tabs:', error);
+    return false;
   }
 }
 
@@ -87,21 +124,76 @@ function setupEventListeners() {
   addToMemoryBtn.addEventListener('click', addToMemory);
   logoutBtn.addEventListener('click', logout);
   viewMemoryBtn.addEventListener('click', openMemoryDashboard);
+
+  if (formatBulletsBtn) {
+    formatBulletsBtn.addEventListener('click', () => {
+      summaryFormat = 'bullets';
+      formatBulletsBtn.classList.add('format-active');
+      formatParagraphBtn.classList.remove('format-active');
+    });
+  }
+
+  if (formatParagraphBtn) {
+    formatParagraphBtn.addEventListener('click', () => {
+      summaryFormat = 'paragraph';
+      formatParagraphBtn.classList.add('format-active');
+      formatBulletsBtn.classList.remove('format-active');
+    });
+  }
 }
 
 async function checkAuthentication() {
+  if (authCheckInProgress) {
+    return;
+  }
+
+  authCheckInProgress = true;
+
   try {
-    const result = await chrome.storage.local.get([STORAGE_KEYS.ACCESS_TOKEN, STORAGE_KEYS.USER_DATA]);
-    
-    if (result[STORAGE_KEYS.ACCESS_TOKEN] && result[STORAGE_KEYS.USER_DATA]) {
-      const isValid = await verifyToken(result[STORAGE_KEYS.ACCESS_TOKEN]);
-      
-      if (isValid) {
+    const result = await chrome.storage.local.get([
+      STORAGE_KEYS.ACCESS_TOKEN,
+      STORAGE_KEYS.USER_DATA,
+      STORAGE_KEYS.AUTH_TIMESTAMP
+    ]);
+
+    const token = result[STORAGE_KEYS.ACCESS_TOKEN];
+    const userData = result[STORAGE_KEYS.USER_DATA];
+    const authTimestamp = result[STORAGE_KEYS.AUTH_TIMESTAMP];
+
+    const isRecentAuth = authTimestamp && (Date.now() - authTimestamp < 24 * 60 * 60 * 1000);
+
+    if (token && userData) {
+
+      if (isRecentAuth) {
         isAuthenticated = true;
-        showSummarySection(result[STORAGE_KEYS.USER_DATA]);
+        showSummarySection(userData);
+        stopAuthPolling();
+
+        verifyToken(token).then(isValid => {
+          if (isValid) {
+            chrome.storage.local.set({
+              [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now()
+            });
+          }
+        });
       } else {
-        await chrome.storage.local.clear();
-        showLoginSection();
+        const isValid = await verifyToken(token);
+
+        if (isValid) {
+          await chrome.storage.local.set({
+            [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now()
+          });
+          isAuthenticated = true;
+          showSummarySection(userData);
+          stopAuthPolling();
+        } else {
+          await chrome.storage.local.remove([
+            STORAGE_KEYS.ACCESS_TOKEN,
+            STORAGE_KEYS.USER_DATA,
+            STORAGE_KEYS.AUTH_TIMESTAMP
+          ]);
+          showLoginSection();
+        }
       }
     } else {
       showLoginSection();
@@ -109,56 +201,107 @@ async function checkAuthentication() {
   } catch (error) {
     console.error('Error checking authentication:', error);
     showLoginSection();
+  } finally {
+    authCheckInProgress = false;
   }
 }
 
 async function verifyToken(token) {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
     const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
-    
+
+    clearTimeout(timeoutId);
     return response.ok;
   } catch (error) {
-    console.error('Error verifying token:', error);
-    return false;
+    if (error.name === 'AbortError') {
+      return true;
+    } else {
+      console.error('Error verifying token:', error);
+      return true;
+    }
   }
 }
 
 function showLoginSection() {
+  isAuthenticated = false;
   loginSection.style.display = 'block';
   summarySection.style.display = 'none';
   loadingSection.style.display = 'none';
   successSection.style.display = 'none';
   hideError();
-  
-  startAuthPolling();
+
+  const formatSelector = document.getElementById('formatSelector');
+  if (formatSelector) {
+    formatSelector.style.display = 'none';
+  }
+
+  if (!isAuthenticated) {
+    checkForAuthInAllTabs().then(foundAuth => {
+      if (foundAuth && !isAuthenticated) {
+        checkAuthentication();
+      } else if (!isAuthenticated) {
+        startAuthPolling();
+      }
+    }).catch(() => {
+      if (!isAuthenticated) {
+        startAuthPolling();
+      }
+    });
+  }
 }
 
 function showSummarySection(userData) {
+  isAuthenticated = true;
   loginSection.style.display = 'none';
   summarySection.style.display = 'block';
   loadingSection.style.display = 'none';
   successSection.style.display = 'none';
   hideError();
-  
+
+  const formatSelector = document.getElementById('formatSelector');
+  if (formatSelector) {
+    formatSelector.style.display = 'block';
+  }
+
   stopAuthPolling();
-  
-  userName.textContent = userData.name || 'User';
-  userEmail.textContent = userData.email || 'user@example.com';
-  userAvatar.textContent = (userData.name || 'U').charAt(0).toUpperCase();
+
+  if (userData) {
+    userName.textContent = userData.name || 'User';
+    userEmail.textContent = userData.email || 'user@example.com';
+    userAvatar.textContent = (userData.name || 'U').charAt(0).toUpperCase();
+  }
 }
 
-function showLoadingSection() {
+function showLoadingSection(message = 'Adding to Memory...') {
   loginSection.style.display = 'none';
   summarySection.style.display = 'none';
   loadingSection.style.display = 'block';
   successSection.style.display = 'none';
   hideError();
+  if (loadingText) {
+    loadingText.textContent = message;
+  }
+}
+
+function showLoadingState() {
+  loginSection.style.display = 'none';
+  summarySection.style.display = 'none';
+  loadingSection.style.display = 'block';
+  successSection.style.display = 'none';
+  hideError();
+  if (loadingText) {
+    loadingText.textContent = 'Loading...';
+  }
 }
 
 function showSuccessSection() {
@@ -211,14 +354,15 @@ async function addToMemory() {
       return;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/summarize`, {
+    const response = await fetch(`${API_BASE_URL}/api/ai/text`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        url: currentTab.url
+        url: currentTab.url,
+        format: summaryFormat
       })
     });
 
@@ -227,6 +371,10 @@ async function addToMemory() {
     if (!response.ok) {
       throw new Error(data.error || 'Failed to add to Memory');
     }
+
+    chrome.storage.local.set({
+      [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now()
+    });
 
     showSuccessSection();
 
@@ -238,51 +386,92 @@ async function addToMemory() {
 }
 
 async function logout() {
+
   try {
     await chrome.storage.local.clear();
-    
+
     showLoginSection();
-    
+
   } catch (error) {
     console.error('Error logging out:', error);
     showError('Failed to logout');
   }
+
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
   if (message.type === 'AUTH_SUCCESS') {
-    checkAuthentication();
+    if (message.data) {
+      chrome.storage.local.set({
+        [STORAGE_KEYS.ACCESS_TOKEN]: message.data.access_token,
+        [STORAGE_KEYS.USER_DATA]: message.data.user,
+        [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now()
+      }, () => {
+        checkAuthentication();
+      });
+    } else {
+      checkAuthentication();
+    }
   }
+
 });
 
 window.addEventListener('message', (event) => {
+
   if (event.data.type === 'MEMORY_AUTH_SUCCESS') {
     chrome.storage.local.set({
       [STORAGE_KEYS.ACCESS_TOKEN]: event.data.data.access_token,
-      [STORAGE_KEYS.USER_DATA]: event.data.data.user
+      [STORAGE_KEYS.USER_DATA]: event.data.data.user,
+      [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now()
     }, () => {
       checkAuthentication();
     });
   }
+
 });
 
 let authPollingInterval = null;
+let authPollingTimeout = null;
 
 function startAuthPolling() {
+
   if (authPollingInterval) return;
-  
+
+  let pollCount = 0;
+  const maxPolls = 120;
+
   authPollingInterval = setInterval(async () => {
+    pollCount++;
+
+    if (pollCount > maxPolls) {
+      stopAuthPolling();
+      return;
+    }
+
     try {
-      const result = await chrome.storage.local.get([STORAGE_KEYS.ACCESS_TOKEN, STORAGE_KEYS.USER_DATA]);
-      
+
+      const result = await chrome.storage.local.get([
+        STORAGE_KEYS.ACCESS_TOKEN,
+        STORAGE_KEYS.USER_DATA
+      ]);
+
       if (result[STORAGE_KEYS.ACCESS_TOKEN] && result[STORAGE_KEYS.USER_DATA]) {
-        checkAuthentication();
-        clearInterval(authPollingInterval);
-        authPollingInterval = null;
+        await checkAuthentication();
+        stopAuthPolling();
+        return;
+      }
+
+      const foundAuth = await checkForAuthInAllTabs();
+
+      if (foundAuth) {
+        await checkAuthentication();
+        stopAuthPolling();
       }
     } catch (error) {
+      console.error('Auth polling error:', error);
     }
-  }, 2000);
+  }, 500);
 }
 
 function stopAuthPolling() {
@@ -290,12 +479,21 @@ function stopAuthPolling() {
     clearInterval(authPollingInterval);
     authPollingInterval = null;
   }
+  if (authPollingTimeout) {
+    clearTimeout(authPollingTimeout);
+    authPollingTimeout = null;
+  }
 }
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'local') {
     if (changes[STORAGE_KEYS.ACCESS_TOKEN] || changes[STORAGE_KEYS.USER_DATA]) {
-      checkAuthentication();
+      if (!isAuthenticated) {
+        clearTimeout(authPollingTimeout);
+        authPollingTimeout = setTimeout(() => {
+          checkAuthentication();
+        }, 100);
+      }
     }
   }
 });
