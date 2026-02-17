@@ -52,15 +52,8 @@ export default function SignupPage() {
         }
 
         localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
-
-        if (window.opener) {
-          window.opener.postMessage({
-            type: 'MEMORY_AUTH_SUCCESS',
-            data: authData
-          }, '*')
-        }
-
-        window.close()
+        window.postMessage({ type: 'MEMORY_AUTH_SUCCESS', data: authData }, '*')
+        setTimeout(() => window.close(), 150)
       } else {
         setMessage("Check your email for the confirmation link!")
       }

@@ -8,6 +8,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
   return (
     <Sonner
+      position="top-center"
+      richColors
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       style={
@@ -15,6 +17,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
+          zIndex: 9999,
         } as React.CSSProperties
       }
       {...props}

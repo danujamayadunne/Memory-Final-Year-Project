@@ -43,19 +43,9 @@ export default function LoginPage() {
           }
         }
         
-        // Store in localStorage for extension to pick up
         localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
-        
-        // Try to send message to extension popup
-        if (window.opener) {
-          window.opener.postMessage({
-            type: 'MEMORY_AUTH_SUCCESS',
-            data: authData
-          }, '*')
-        }
-        
-        // Close immediately - no alert delay
-        window.close()
+        window.postMessage({ type: 'MEMORY_AUTH_SUCCESS', data: authData }, '*')
+        setTimeout(() => window.close(), 150)
       } else {
         // For non-extension flow, redirect to dashboard immediately
         window.location.href = "/dashboard"

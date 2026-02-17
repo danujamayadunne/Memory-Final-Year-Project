@@ -10,7 +10,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset>
         <DynamicHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-col p-9 mx-auto w-full pt-6">
           {children}
         </div>
       </SidebarInset>

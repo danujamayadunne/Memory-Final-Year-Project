@@ -5,14 +5,11 @@ import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { ExternalLink, Image as ImageIcon, Loader2, Search, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import Image from "next/image"
@@ -163,103 +160,92 @@ export default function ImagesPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/5">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>You are signed out</CardTitle>
-            <CardDescription>
-              Sign in to view your saved images.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Button asChild className="flex-1">
-                <Link href="/auth/login">Sign In</Link>
-              </Button>
-              <Button variant="outline" asChild className="flex-1">
-                <Link href="/auth/signup">Create Account</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="w-full max-w-sm space-y-6 text-center px-4">
+          <div>
+            <h1 className="text-xl font-medium">Sign in required</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Sign in to view your saved images
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button asChild className="flex-1 rounded-lg">
+              <Link href="/auth/login">Sign In</Link>
+            </Button>
+            <Button asChild variant="outline" className="flex-1 rounded-lg">
+              <Link href="/auth/signup">Create Account</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 tracking-tight">
-              <Search className="h-5 w-5" />
-              Search & Filter
-            </CardTitle>
-            <CardDescription className="tracking-tight">
-              {useSemanticSearch ? "Semantic search powered by AI" : "Text-based keyword search"}. Filter by tags.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row">
-              <div className="flex-1 relative w-full">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search descriptions or tags..."
-                  className="pl-10 tracking-tight"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="w-48">
-                <Select value={selectedTag} onValueChange={setSelectedTag}>
-                  <SelectTrigger className="w-full text-muted-foreground">
-                    <SelectValue placeholder="All tags" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Tags</SelectItem>
-                    {availableTags.map((tag) => (
-                      <SelectItem key={tag} value={tag}>
-                        {tag}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center justify-between pt-2 border-t">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="semantic-search-images"
-                  checked={useSemanticSearch}
-                  onCheckedChange={setUseSemanticSearch}
-                />
-                <Label
-                  htmlFor="semantic-search-images"
-                  className="text-sm font-normal cursor-pointer flex items-center gap-1.5"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  Semantic Search
-                </Label>
-              </div>
-              {searchTerm.trim() && (
-                <span className="text-xs text-muted-foreground">
-                  {searching ? "Searching..." : `${filteredItems.length} result${filteredItems.length !== 1 ? "s" : ""}`}
-                </span>
+      <div>
+
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative border border-input rounded-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search descriptions or tags..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`pl-10 h-11 border-0 bg-muted/50 hover:bg-muted/70 focus-visible:bg-muted/70 rounded-lg transition-colors ${searching ? "opacity-70" : ""}`}
+              />
+              {searching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+            <Select value={selectedTag} onValueChange={setSelectedTag}>
+              <SelectTrigger className="w-full sm:w-44 h-11 border-0 bg-muted/50 rounded-lg">
+                <SelectValue placeholder="All tags" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tags</SelectItem>
+                {availableTags.map((tag) => (
+                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Switch
+                id="semantic-search-images"
+                checked={useSemanticSearch}
+                onCheckedChange={setUseSemanticSearch}
+              />
+              <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Semantic search
+              </span>
+            </label>
+            {searchTerm.trim() && (
+              <span className="text-xs text-muted-foreground">
+                {searching ? "Searching..." : `${filteredItems.length} result${filteredItems.length !== 1 ? "s" : ""}`}
+              </span>
+            )}
+          </div>
+        </div>
 
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold tracking-tight">
-            Your Images ({filteredItems.length} items)
+        <div className="flex items-center justify-between pt-9 pb-5">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Images ({filteredItems.length})
           </h2>
         </div>
 
@@ -272,159 +258,147 @@ export default function ImagesPage() {
         {loading ? (
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, idx) => (
-              <Card key={idx} className="overflow-hidden pt-0">
-                <Skeleton className="h-64 w-full" />
-                <CardContent className="space-y-3">
+              <div key={idx} className="rounded-lg border overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-4 space-y-2">
                   <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-6 w-16" />
-                    <Skeleton className="h-6 w-12" />
-                  </div>
-                </CardContent>
-              </Card>
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
             ))}
           </div>
         ) : searching && searchTerm.trim() ? (
-          <Card className="py-16 text-center">
-            <CardContent className="flex flex-col items-center gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <h3 className="text-lg font-semibold tracking-tight">
-                Searching images...
-              </h3>
-              <p className="text-sm text-muted-foreground tracking-tight max-w-md">
-                {useSemanticSearch
-                  ? "Looking for semantically similar memories."
-                  : "Searching by keyword..."}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-dashed py-16 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground/60 mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">
+              {useSemanticSearch ? "Finding similar content..." : "Searching..."}
+            </p>
+          </div>
         ) : filteredItems.length === 0 ? (
-          <Card className="border-dashed text-center py-16">
-            <CardContent className="space-y-3">
-              <ImageIcon className="h-9 w-9 text-muted-foreground mx-auto" />
-              <h3 className="text-lg font-semibold tracking-tight">
-                No images yet
-              </h3>
-              <p className="text-sm text-muted-foreground tracking-tight max-w-xs mx-auto">
-                Use the Memory browser extension to right-click any image and
-                save it directly to this gallery.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-dashed py-16 px-6 text-center">
+            <ImageIcon className="h-10 w-10 text-muted-foreground/60 mx-auto mb-4" />
+            <p className="text-muted-foreground text-sm mb-1">No images yet</p>
+            <p className="text-muted-foreground/80 text-sm max-w-xs mx-auto">
+              Use the Memory browser extension to right-click any image and save it to this gallery.
+            </p>
+          </div>
         ) : (
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
             {filteredItems.map((item) => (
-              <Card
+              <div
                 key={item.id}
-                className="overflow-hidden flex flex-col cursor-pointer pt-0"
+                className="rounded-lg border overflow-hidden cursor-pointer transition-colors hover:bg-muted/30 group"
                 onClick={() => {
                   setSelectedImage(item)
                   setImageDialogOpen(true)
                 }}
               >
-                <div className="overflow-hidden h-64 w-full relative">
+                <div className="overflow-hidden h-48 w-full relative bg-muted">
                   <Image
                     src={item.image_url}
                     alt={item.description || "Saved memory"}
-                    className="object-cover object-top"
+                    className="object-cover object-top transition-transform group-hover:scale-[1.02]"
                     fill
                     loading="lazy"
                     sizes="(max-width: 768px) 50vw, 33vw"
                   />
                 </div>
-                <CardContent className="flex-1 flex flex-col gap-3">
-                  <p className="text-sm text-muted-foreground tracking-tight line-clamp-3">
-                    {item.description || "No description provided"}
+                <div className="p-4 space-y-2">
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {item.description || "No description"}
                   </p>
                   {item.tags && item.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {item.tags.map((tag) => (
-                        <Badge key={tag} variant="outline">
+                        <span key={tag} className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted">
                           {tag}
-                        </Badge>
+                        </span>
                       ))}
                     </div>
                   )}
-                  <div className="text-xs text-muted-foreground flex items-center justify-between">
-                    <span>{new Date(item.created_at).toLocaleString()}</span>
+                  <div className="text-xs text-muted-foreground flex items-center justify-between pt-1">
+                    <span>{new Date(item.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
                     {item.source_url && (
                       <Link
                         href={item.source_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-primary hover:underline text-xs"
+                        className="text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        View source
+                        Source
                       </Link>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent className="max-w-4xl w-full rounded-2xl bg-background/5 backdrop-blur-lg border border-white/10 text-white">
-          <DialogHeader>
-            <DialogTitle>
-              Image Details
-            </DialogTitle>
-            <DialogDescription>
-              {selectedImage?.source_url ? (
-                <Link
-                  href={selectedImage.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1"
-                >
-                  <span className="text-sm truncate max-w-[300px] text-muted-foreground">{selectedImage.source_url || "Saved from the web"}</span>
-                  {selectedImage.source_url && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
-                </Link>
-              ) : null}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col lg:flex-row gap-6">
-            <div className="flex-1">
-              <div className="w-full h-[300px] relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                <Image
-                  src={selectedImage?.image_url || ""}
-                  alt={selectedImage?.description || "Saved memory"}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                />
+        <DialogContent className="max-h-[90vh] w-full max-w-[720px] flex flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-xl sm:max-w-[720px]">
+          <DialogHeader className="flex-shrink-0 border-b px-8 pt-8 pb-6">
+            <div className="flex gap-4">
+              <div className="flex h-13 w-1 shrink-0 self-stretch rounded-full bg-chart-1/80" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="font-serif text-xl font-normal">Image Details</DialogTitle>
+                <DialogDescription asChild>
+                  {selectedImage?.source_url ? (
+                    <Link
+                      href={selectedImage.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex flex-wrap items-center gap-1.5 mt-1 text-muted-foreground transition-colors hover:text-foreground text-xs"
+                    >
+                      <span className="break-all">{selectedImage.source_url}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    </Link>
+                  ) : (
+                    <span>Saved from the web</span>
+                  )}
+                </DialogDescription>
               </div>
             </div>
-            <div className="flex-1 space-y-4">
+          </DialogHeader>
+          <div className="flex flex-col">
+            <div className="w-full min-h-[320px] flex-1 relative overflow-hidden bg-muted">
+              <Image
+                src={selectedImage?.image_url || ""}
+                alt={selectedImage?.description || "Saved memory"}
+                fill
+                className="object-contain"
+                sizes="720px"
+              />
+            </div>
+            <div className="flex-shrink-0 border-t px-8 py-6 space-y-4 bg-muted/20">
               <div>
-                <h4 className="text-sm font-semibold text-muted-foreground">
-                  Description
-                </h4>
-                <p className="text-sm text-foreground mt-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Description</span>
+                </div>
+                <p className="text-[15px] leading-relaxed text-foreground/90">
                   {selectedImage?.description || "No description provided"}
                 </p>
               </div>
-              {selectedImage?.tags && selectedImage.tags.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-muted-foreground">
-                    Tags
-                  </h4>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedImage.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="text-xs text-muted-foreground">
-                Saved on {selectedImage && new Date(selectedImage.created_at).toLocaleString()}
-              </div>
             </div>
+          </div>
+          <div className="flex items-center justify-between border-t bg-muted/30 px-8 py-4">
+            {selectedImage?.tags && selectedImage.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedImage.tags.map((tag) => (
+                  <span key={tag} className="text-xs px-2.5 py-1 rounded-full font-medium bg-muted">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground tabular-nums">
+              {selectedImage && new Date(selectedImage.created_at).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
           </div>
         </DialogContent>
       </Dialog>

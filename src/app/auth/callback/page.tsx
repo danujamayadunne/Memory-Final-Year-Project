@@ -31,19 +31,9 @@ export default function AuthCallbackPage() {
               }
             }
             
-            // Store in localStorage for extension to pick up
             localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
-            
-            // Send auth data to extension
-            if (window.opener) {
-              window.opener.postMessage({
-                type: 'MEMORY_AUTH_SUCCESS',
-                data: authData
-              }, '*')
-            }
-            
-            // Close the window immediately
-            window.close()
+            window.postMessage({ type: 'MEMORY_AUTH_SUCCESS', data: authData }, '*')
+            setTimeout(() => window.close(), 150)
           } else {
             // Redirect to dashboard for normal web flow
             window.location.href = "/dashboard"

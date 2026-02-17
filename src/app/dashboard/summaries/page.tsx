@@ -4,18 +4,15 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { BookOpen, Search, Clock, ExternalLink, Trash2, MessageCircle, Link as LinkIcon, Tags, Loader2, Sparkles } from "lucide-react"
 import { ChatSheet } from "@/components/dashboard/chat-sheet"
-import { FormattedSummary } from "@/components/formatted-summary"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { SummaryDialog } from "@/components/dashboard/summary-dialog"
 import { findRelatedSummariesWithAI, type RelatedSummaryWithScore } from "@/lib/similarity"
 import { SimpleTagDialog } from "@/components/dashboard/simple-tag-dialog"
 import Link from "next/link"
@@ -40,7 +37,7 @@ export default function SummariesPage() {
   const [items, setItems] = useState<SummaryItem[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedTag, setSelectedTag] = useState<string>("")
+  const [selectedTag, setSelectedTag] = useState<string>("all")
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<SummaryItem[]>([])
@@ -198,8 +195,8 @@ export default function SummariesPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
     )
@@ -207,265 +204,180 @@ export default function SummariesPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Please sign in</CardTitle>
-            <CardDescription>You need to be signed in to view summaries</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href="/auth/login">Sign In</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="w-full max-w-sm space-y-6 text-center px-4">
+          <div>
+            <h1 className="text-xl font-medium">Sign in required</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Sign in to view your summaries
+            </p>
+          </div>
+          <Button asChild className="w-full rounded-lg">
+            <Link href="/auth/login">Sign In</Link>
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 tracking-tight">
-              <Search className="h-5 w-5" />
-              Search & Filter
-            </CardTitle>
-            <CardDescription className="tracking-tight">
-              {useSemanticSearch ? "Semantic search powered by AI" : "Text-based search"}. Filter by tags.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex w-full gap-3">
-              <div className="flex-1 relative">
-                <Input
-                  placeholder={useSemanticSearch ? "Search by meaning, not just keywords..." : "Search titles, summaries, URLs, tags..."}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`tracking-tight ${searching ? "opacity-70" : ""}`}
-                />
-                {searching && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-              <div className="w-48">
-                <Select value={selectedTag} onValueChange={setSelectedTag}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All Tags" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Tags</SelectItem>
-                    {tags.map(tag => (
-                      <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center justify-between pt-2 border-t">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="semantic-search"
-                  checked={useSemanticSearch}
-                  onCheckedChange={setUseSemanticSearch}
-                />
-                <Label htmlFor="semantic-search" className="text-sm font-normal cursor-pointer flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  Semantic Search
-                </Label>
-              </div>
-              {searchTerm.trim() && (
-                <span className="text-xs text-muted-foreground">
-                  {searching ? "Searching..." : `${filteredItems.length} result${filteredItems.length !== 1 ? 's' : ''}`}
-                </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold tracking-tight">
-              Your Summaries ({filteredItems.length} items)
-            </h2>
-          </div>
-
-          {loading ? (
-            <div className="grid gap-4">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i}>
-                  <CardContent>
-                    <div className="flex items-center justify-between w-full">
-                      <div className="w-3/4 space-y-3">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-9 w-full" />
-                        <div className="flex gap-2">
-                          <Skeleton className="h-6 w-16" />
-                          <Skeleton className="h-6 w-20" />
-                        </div>
-                      </div>
-                      <div className="w-1/4 flex items-end justify-end flex-col gap-2">
-                        <Skeleton className="h-6 w-[90px]" />
-                        <Skeleton className="h-6 w-[90px]" />
-                        <Skeleton className="h-6 w-[90px]" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (searching && searchTerm.trim()) ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2 tracking-tight">Searching...</h3>
-                <p className="text-muted-foreground mb-4 tracking-tight">
-                  {useSemanticSearch ? "Finding semantically similar content..." : "Searching through summaries..."}
-                </p>
-              </CardContent>
-            </Card>
-          ) : filteredItems.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2 tracking-tight">No summaries found</h3>
-                <p className="text-muted-foreground mb-4 tracking-tight">
-                  {searchTerm || selectedTag
-                    ? "Try adjusting your filters or search terms"
-                    : "Start by adding some content to your knowledge base"
-                  }
-                </p>
-                <Button asChild>
-                  <Link href="/dashboard">Add Summary</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {filteredItems.map((item) => (
-                <div key={item.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setSelectedItem(item); setShowModal(true) }}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <a href={item.url} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate tracking-tight max-w-[900px]" onClick={(e) => e.stopPropagation()}>
-                          {item.title || item.url}
-                        </a>
-                        <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2 tracking-tight">
-                        {item.summary}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {new Date(item.created_at).toLocaleString()}
-                      </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        {item.tags?.map(tag => (
-                          <Badge key={tag.id} variant="outline" style={{ borderColor: `${tag.color}5A` }}>
-                            {tag.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleAskQuestion(item)
-                        }}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        Ask Question
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSeeRelatedTopics(item)
-                        }}
-                      >
-                        <LinkIcon className="h-4 w-4" />
-                        Related Topics
-                      </Button>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleAddTags(item)
-                          }}
-                        >
-                          <Tags className="h-4 w-4" />
-                          Add Tags
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(item.id)
-                          }}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative border border-input rounded-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder={useSemanticSearch ? "Search by meaning..." : "Search titles, summaries, tags..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`pl-10 h-11 border-0 bg-muted/50 hover:bg-muted/70 focus-visible:bg-muted/70 rounded-lg transition-colors ${searching ? "opacity-70" : ""}`}
+              />
+              {searching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
-              ))}
+              )}
             </div>
-          )}
+            <Select value={selectedTag} onValueChange={setSelectedTag}>
+              <SelectTrigger className="w-full sm:w-44 h-11 border-0 bg-muted/50 rounded-lg">
+                <SelectValue placeholder="All Tags" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tags</SelectItem>
+                {tags.map(tag => (
+                  <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Switch
+                id="semantic-search"
+                checked={useSemanticSearch}
+                onCheckedChange={setUseSemanticSearch}
+              />
+              <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Semantic search
+              </span>
+            </label>
+            {searchTerm.trim() && (
+              <span className="text-xs text-muted-foreground">
+                {searching ? "Searching..." : `${filteredItems.length} result${filteredItems.length !== 1 ? "s" : ""}`}
+              </span>
+            )}
+          </div>
         </div>
 
-        <Dialog open={showModal} onOpenChange={setShowModal}>
-          <DialogContent className="max-h-[90vh] rounded-2xl min-w-[800px] shadow-none flex flex-col bg-white/5 backdrop-blur-lg border border-white/10 text-white">
-            <DialogHeader className="flex-shrink-0">
-              <DialogTitle className="text-xl font-semibold tracking-tight">
-                {selectedItem?.title || selectedItem?.url}
-              </DialogTitle>
-              <DialogDescription>
-                <a href={selectedItem?.url} target="_blank" rel="noreferrer" className="text-white hover:underline flex items-center gap-1">
-                  {selectedItem?.url}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </DialogDescription>
-            </DialogHeader>
+        <div className="flex items-center justify-between pt-9 pb-5">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Summaries ({filteredItems.length})
+          </h2>
+        </div>
 
-            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold tracking-tight">Summary</h3>
-                <div className="prose prose-sm max-w-none text-white">
-                  <FormattedSummary
-                    content={selectedItem?.summary || ""}
-                    className="text-white/90"
-                  />
+        {loading ? (
+          <div className="space-y-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="rounded-lg px-4 py-3">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
+        ) : (searching && searchTerm.trim()) ? (
+          <div className="rounded-lg border border-dashed py-16 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground/60 mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">
+              {useSemanticSearch ? "Finding similar content..." : "Searching..."}
+            </p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="rounded-lg border border-dashed py-16 px-6 text-center">
+            <BookOpen className="h-10 w-10 text-muted-foreground/60 mx-auto mb-4" />
+            <p className="text-muted-foreground text-sm mb-1">No summaries found</p>
+            <p className="text-muted-foreground/80 text-sm mb-4">
+              {searchTerm || selectedTag !== "all"
+                ? "Try adjusting your filters or search"
+                : "Add content from the dashboard to get started"
+              }
+            </p>
+            <Button asChild variant="outline" size="sm" className="rounded-lg">
+              <Link href="/dashboard">Go to Dashboard</Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-lg border overflow-hidden">
+            {filteredItems.map((item, idx, arr) => (
+              <div
+                key={item.id}
+                onClick={() => { setSelectedItem(item); setShowModal(true) }}
+                className={`flex items-start gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 group ${
+                  idx < arr.length - 1 ? "border-b" : ""
+                }`}
+              >
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-foreground hover:text-primary truncate block"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {item.title || item.url}
+                  </a>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
+                    {item.summary}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(item.created_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    {item.tags?.map(tag => (
+                      <span
+                        key={tag.id}
+                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAskQuestion(item)} title="Ask question">
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleSeeRelatedTopics(item)} title="Related topics">
+                    <LinkIcon className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAddTags(item)} title="Add tags">
+                    <Tags className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)} title="Delete">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1" />
+              </div>
+            ))}
+          </div>
+        )}
 
-            <div className="flex-shrink-0 flex flex-col items-start gap-2 justify-between pt-4 border-t border-white/10 mt-4">
-              <div className="flex flex-wrap gap-2">
-                {selectedItem?.tags?.map(tag => (
-                  <Badge key={tag.id} variant="secondary" className="px-3 py-1 font-medium">
-                    {tag.name}
-                  </Badge>
-                ))}
-              </div>
-              <div className="text-xs text-muted-foreground px-2">
-                Created: {selectedItem && new Date(selectedItem.created_at).toLocaleString()}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <SummaryDialog
+          item={selectedItem}
+          open={showModal}
+          onOpenChange={setShowModal}
+        />
 
         <Dialog open={showRelatedTopics} onOpenChange={(open) => {
           setShowRelatedTopics(open)
@@ -474,112 +386,86 @@ export default function SummariesPage() {
             setRelatedTopics([])
           }
         }}>
-          <DialogContent className="max-h-[90vh] rounded-2xl min-w-[600px]">
-            <DialogHeader>
-              <DialogTitle className="tracking-tight">Related Topics</DialogTitle>
-              <DialogDescription className="tracking-tight">
-                Topics related to "{selectedItem?.title || selectedItem?.url}"
-              </DialogDescription>
+          <DialogContent className="max-h-[90vh] w-[560px] max-w-[calc(100vw-2rem)] gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-xl">
+            <DialogHeader className="flex-shrink-0 border-b px-8 pt-8 pb-6">
+              <div className="flex gap-4">
+                <div className="flex h-13 w-1 shrink-0 self-stretch rounded-full bg-chart-1/80" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="font-serif text-lg font-normal">Related Topics</DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Similar to &quot;{selectedItem?.title || selectedItem?.url}&quot;
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <div className="max-h-[60vh] overflow-y-auto">
               {loadingRelatedTopics ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Sparkles className="h-8 w-8 text-primary animate-pulse mb-[9px]" />
-                  <p className="text-muted-foreground text-center tracking-tight">
-                    Calculating similarity...
-                  </p>
-                  <p className="text-xs text-muted-foreground tracking-tight">
-                    Finding related summaries using AI
-                  </p>
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Sparkles className="h-8 w-8 text-chart-1 animate-pulse mb-3" />
+                  <p className="text-sm text-muted-foreground">Finding related content...</p>
                 </div>
               ) : relatedTopics.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8 tracking-tight">
-                  No related topics found
-                </p>
+                <p className="text-muted-foreground text-center py-12 text-sm">No related topics found</p>
               ) : (
-                relatedTopics.map(({ item: topic, score }) => {
-                  const relevancePercent = Math.round(score * 100);
-                  const circumference = 2 * Math.PI * 16;
-                  const offset = circumference - (relevancePercent / 100) * circumference;
-
-                  const getRelevanceColor = (percent: number) => {
-                    if (percent >= 70) return 'text-green-500';
-                    if (percent >= 50) return 'text-yellow-500';
-                    if (percent >= 30) return 'text-orange-500';
-                    return 'text-gray-400';
-                  };
-
-                  return (
-                    <div
-                      key={topic.id}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => {
-                        setShowRelatedTopics(false)
-                        setSelectedItem(topic)
-                        setShowModal(true)
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-4">
+                <div className="divide-y">
+                  {relatedTopics.map(({ item: topic, score }) => {
+                    const relevancePercent = Math.round(score * 100)
+                    const circumference = 2 * Math.PI * 14
+                    const offset = circumference - (relevancePercent / 100) * circumference
+                    const getRelevanceColor = (percent: number) => {
+                      if (percent >= 70) return "text-chart-2"
+                      if (percent >= 50) return "text-chart-4"
+                      if (percent >= 30) return "text-chart-5"
+                      return "text-muted-foreground/50"
+                    }
+                    return (
+                      <div
+                        key={topic.id}
+                        className="flex items-start gap-4 px-8 py-4 cursor-pointer transition-colors hover:bg-muted/30"
+                        onClick={() => {
+                          setShowRelatedTopics(false)
+                          setSelectedItem(topic)
+                          setShowModal(true)
+                        }}
+                      >
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <a
-                              href={topic.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-primary hover:underline truncate tracking-tight"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {topic.title || topic.url}
-                            </a>
-                            <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2 tracking-tight">
+                          <a
+                            href={topic.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-medium text-foreground hover:text-chart-1 truncate block"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {topic.title || topic.url}
+                          </a>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
                             {topic.summary}
                           </p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 mt-2">
                             {topic.tags?.map(tag => (
-                              <Badge key={tag.id} variant="outline" style={{ borderColor: `${tag.color}5A` }}>
+                              <span
+                                key={tag.id}
+                                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+                              >
                                 {tag.name}
-                              </Badge>
+                              </span>
                             ))}
                           </div>
                         </div>
-                        <div className="flex-shrink-0">
-                          <div className="relative w-16 h-16">
-                            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="16"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                className="text-gray-200 dark:text-gray-700"
-                              />
-                              <circle
-                                cx="18"
-                                cy="18"
-                                r="16"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeDasharray={circumference}
-                                strokeDashoffset={offset}
-                                className={getRelevanceColor(relevancePercent)}
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-xs font-semibold text-foreground">
-                                {relevancePercent}%
-                              </span>
-                            </div>
+                        <div className="relative w-10 h-10 shrink-0">
+                          <svg className="w-10 h-10 -rotate-90" viewBox="0 0 32 32">
+                            <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted/50" />
+                            <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray={circumference} strokeDashoffset={offset} className={getRelevanceColor(relevancePercent)} strokeLinecap="round" />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-[10px] font-medium tabular-nums">{relevancePercent}%</span>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
+                    )
+                  })}
+                </div>
               )}
             </div>
           </DialogContent>

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tag, Plus, X, Loader2 } from "lucide-react"
 
@@ -189,107 +188,115 @@ export function SimpleTagDialog({
     }
   }
 
+  const availableTags = allTags.filter(tag => !currentTags.some(t => t.id === tag.id))
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md shadow-none rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5" />
-            Manage Tags
-          </DialogTitle>
-          <DialogDescription>
-            Add or remove tags to organize your summaries
-          </DialogDescription>
+      <DialogContent className="max-h-[90vh] w-full max-w-[400px] flex flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 shadow-xl sm:max-w-[400px]">
+        <DialogHeader className="flex-shrink-0 border-b px-6 pt-6 pb-5">
+          <div className="flex gap-4">
+            <div className="flex h-13 w-1 shrink-0 self-stretch rounded-full bg-chart-1/80" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="font-serif text-lg font-normal">Manage Tags</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">Add or remove tags to organize your summaries</DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
+            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
               {error}
             </div>
           )}
 
           <div>
-            <h4 className="text-sm font-medium mb-2">Current Tags</h4>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Current</span>
+            </div>
             <div className="flex flex-wrap gap-2">
               {currentTags.length === 0 ? (
                 <span className="text-sm text-muted-foreground">No tags assigned</span>
               ) : (
                 currentTags.map(tag => (
-                  <Badge
+                  <span
                     key={tag.id}
-                    variant="secondary"
-                    className="flex items-center gap-1 pr-1"
-                    style={{ backgroundColor: tag.color + '20', borderColor: tag.color }}
+                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium group"
+                    style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
                   >
                     {tag.name}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                    <button
+                      type="button"
                       onClick={() => handleRemoveTag(tag.id)}
                       disabled={loading}
+                      className="opacity-60 hover:opacity-100 transition-opacity disabled:opacity-40"
+                      aria-label={`Remove ${tag.name}`}
                     >
                       <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
+                    </button>
+                  </span>
                 ))
               )}
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-medium mb-2">Add New Tag</h4>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Add New</span>
+            </div>
             <div className="flex gap-2">
               <Input
                 placeholder="Tag name"
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") handleCreateTag()
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    handleCreateTag()
+                  }
                 }}
                 disabled={loading}
-                className="flex-1"
+                className="flex-1 h-10 border shadow-none bg-muted/50 rounded-lg focus-visible:bg-muted/70"
               />
               <Button
                 onClick={handleCreateTag}
                 disabled={loading || !newTagName.trim()}
                 size="sm"
+                className="h-10 px-3 rounded-lg shrink-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               </Button>
             </div>
           </div>
 
-          {allTags.length > 0 && (
+          {availableTags.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium mb-2">Available Tags</h4>
-              <div className="max-h-32 overflow-y-auto space-y-1">
-                {allTags
-                  .filter(tag => !currentTags.some(t => t.id === tag.id))
-                  .map(tag => (
-                    <Button
-                      key={tag.id}
-                      variant="ghost"
-                      className="w-full justify-start h-8 text-sm"
-                      onClick={() => handleAddExistingTag(tag)}
-                      disabled={loading}
-                    >
-                      <div
-                        className="w-3 h-3 rounded-full mr-2"
-                        style={{ backgroundColor: tag.color }}
-                      />
-                      {tag.name}
-                    </Button>
-                  ))
-                }
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Available</span>
+              </div>
+              <div className="max-h-32 overflow-y-auto rounded-lg border divide-y">
+                {availableTags.map(tag => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted/50 transition-colors disabled:opacity-50"
+                    onClick={() => handleAddExistingTag(tag)}
+                    disabled={loading}
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    {tag.name}
+                  </button>
+                ))}
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex justify-end">
-          <Button onClick={onClose} variant="outline">
+        <div className="flex-shrink-0 border-t px-6 py-4 bg-muted/20">
+          <Button onClick={onClose} variant="outline" size="sm" className="w-full rounded-lg">
             Done
           </Button>
         </div>

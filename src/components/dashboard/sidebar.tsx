@@ -43,15 +43,11 @@ import {
   Image as ImageIcon,
   ChevronRight,
   FileText,
+  StickyNote,
 } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 
 const data = {
-  user: {
-    name: "User",
-    email: "user@example.com",
-    avatar: "/avatars/01.png",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -73,6 +69,11 @@ const data = {
           icon: ImageIcon,
         },
       ],
+    },
+    {
+      title: "Notes",
+      url: "/dashboard/notes",
+      icon: StickyNote,
     },
     {
       title: "Map",
@@ -102,22 +103,24 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="inset">
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <BookOpen className="h-4 w-4" />
+      <SidebarHeader className="border-b border-sidebar-border/50">
+        <Link href="/dashboard" className="flex items-center gap-3 px-3 py-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-sm">
+            <BookOpen className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">Memory</span>
+            <span className="font-serif text-lg font-medium tracking-tight">Memory</span>
             <span className="text-xs text-muted-foreground">Web Summarizer</span>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarContent className="flex flex-col gap-1">
+        <SidebarGroup className="py-2">
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {data.navMain.map((item) => {
                 if (item.items) {
                   const isParentActive = item.items.some((sub) => activePath.startsWith(sub.url))
@@ -140,22 +143,26 @@ export function AppSidebar() {
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton
                             type="button"
-                            className="justify-between"
+                            className="justify-between rounded-lg px-3 py-2.5"
                             isActive={false}
                             data-state={isParentActive ? "active" : undefined}
                           >
-                            <span className="flex items-center gap-2">
+                            <span className="flex items-center gap-3">
                               <item.icon className="h-4 w-4" />
                               <span>{item.title}</span>
                             </span>
-                            <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <SidebarMenuSub>
+                          <SidebarMenuSub className="ml-2 mt-0.5 border-l border-sidebar-border/60 pl-3">
                             {item.items.map((sub) => (
                               <SidebarMenuSubItem key={sub.title}>
-                                <SidebarMenuSubButton asChild isActive={activePath.startsWith(sub.url)}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={activePath.startsWith(sub.url)}
+                                  className="rounded-md px-2.5 py-2"
+                                >
                                   <Link href={sub.url}>
                                     {sub.icon && (
                                       <sub.icon className="h-4 w-4 text-muted-foreground" />
@@ -174,7 +181,11 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={activePath === item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={activePath === item.url}
+                      className="rounded-lg px-3 py-2.5"
+                    >
                       <Link href={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
@@ -186,15 +197,17 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
+        <SidebarGroup className="py-2">
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            Account
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {data.navSecondary.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="rounded-lg px-3 py-2.5">
                     <Link href={item.url}>
-                      <item.icon />
+                      <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -204,74 +217,77 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="px-2 py-2 mb-2">
-          <ModeToggle />
-        </div>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user?.user_metadata?.avatar_url} />
-                    <AvatarFallback className="rounded-lg">
-                      {user?.email?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
-                      {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "User"}
-                    </span>
-                    <span className="truncate text-xs">
-                      {user?.email}
-                    </span>
-                  </div>
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg">
+      <SidebarFooter className="border-t border-sidebar-border/50">
+        <div className="flex flex-col gap-2 p-2">
+          <div className="flex items-center justify-between rounded-lg bg-sidebar-accent/50 px-3 py-2">
+            <span className="text-xs text-muted-foreground">Theme</span>
+            <ModeToggle />
+          </div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton
+                    size="lg"
+                    className="rounded-xl px-3 py-2.5 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  >
+                    <Avatar className="h-9 w-9 rounded-lg ring-2 ring-sidebar-border/50">
                       <AvatarImage src={user?.user_metadata?.avatar_url} />
-                      <AvatarFallback className="rounded-lg">
+                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-medium">
                         {user?.email?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">
-                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "User"}
+                        {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}
                       </span>
-                      <span className="truncate text-xs">
+                      <span className="truncate text-xs text-muted-foreground">
                         {user?.email}
                       </span>
                     </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
-                    <User className="mr-2 h-4 w-4" />
-                    Account
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
+                  side="top"
+                  align="end"
+                  sideOffset={8}
+                >
+                  <DropdownMenuLabel className="p-0 font-normal">
+                    <div className="flex items-center gap-3 px-3 py-3 text-left text-sm">
+                      <Avatar className="h-10 w-10 rounded-lg">
+                        <AvatarImage src={user?.user_metadata?.avatar_url} />
+                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-medium">
+                          {user?.email?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">
+                          {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {user?.email}
+                        </span>
+                      </div>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings">
+                      <User className="mr-2 h-4 w-4" />
+                      Account
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )

@@ -1,428 +1,244 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Memory - Web Summarizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 380px;
-      min-height: 450px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-      color: #ffffff;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      width: 360px;
+      min-height: 420px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      font-size: 14px;
+      background: #f5f5f5;
+      color: #000;
+      -webkit-font-smoothing: antialiased;
     }
-
     .header {
-      background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-      color: white;
-      padding: 24px 20px;
-      text-align: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      position: relative;
-    }
-
-    .header::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    }
-
-    .header h1 {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 4px;
-      background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: -0.5px;
-    }
-
-    .header p {
-      font-size: 13px;
-      opacity: 0.7;
-      font-weight: 400;
-    }
-
-    .content {
-      padding: 24px;
-      background: transparent;
-    }
-
-    .login-section {
-      text-align: center;
-      padding: 8px 0;
-    }
-
-    .login-section h2 {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: #ffffff;
-      letter-spacing: -0.3px;
-    }
-
-    .login-section p {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.6);
-      margin-bottom: 28px;
-      line-height: 1.5;
-    }
-
-    .btn {
-      width: 100%;
-      padding: 14px 24px;
-      border: none;
-      border-radius: 9999px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      text-decoration: none;
-      display: inline-block;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      letter-spacing: 0.2px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
-      color: #000000;
-      border: none;
-      letter-spacing: -0.3px;
-      margin-bottom: 12px;
-    }
-
-    .btn-secondary {
-      background: transparent;
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      letter-spacing: -0.3px;
-      margin-top: 0;
-    }
-
-    .summary-section {
-      display: none;
-    }
-
-    .shortcut-hint {
-      margin-top: 16px;
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.6);
-      text-align: center;
-      line-height: 1.6;
-    }
-
-    .shortcut-key {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 2px 8px;
-      margin: 0 3px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.08);
-      letter-spacing: 0.3px;
-    }
-
-    .current-site {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 20px;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-    }
-
-    .current-site:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.15);
-    }
-
-    .current-site h3 {
-      font-size: 11px;
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: rgba(255, 255, 255, 0.9);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .current-site p {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.7);
-      word-break: break-all;
-      line-height: 1.5;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px 20px;
-    }
-
-    .loading .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-top: 3px solid #ffffff;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 16px;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading p {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 14px;
-    }
-
-    .success {
-      text-align: center;
-      padding: 32px 20px;
-    }
-
-    .success-icon {
-      width: 64px;
-      height: 64px;
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px;
-      font-weight: bold;
-      font-size: 28px;
-      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
-    }
-
-    .success h3 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #ffffff;
-      margin-bottom: 8px;
-      letter-spacing: -0.3px;
-    }
-
-    .success p {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.7);
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-
-    .error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
-      padding: 14px 16px;
-      border-radius: 12px;
-      font-size: 14px;
-      margin-bottom: 16px;
-      backdrop-filter: blur(10px);
-    }
-
-    .user-info {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 20px;
+      padding: 24px 24px 20px;
       display: flex;
       align-items: center;
       gap: 14px;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
+      background: #fff;
     }
-
-    .user-info:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.15);
-    }
-
-    .user-avatar {
+    .logo {
       width: 44px;
       height: 44px;
-      background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
-      color: #000000;
-      border-radius: 50%;
+      border-radius: 12px;
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      font-size: 16px;
-      flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+      font-size: 20px;
+      color: #fff;
     }
-
-    .user-details {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .user-details h4 {
+    .header-text h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+    .header-text p { font-size: 13px; color: #666; margin-top: 2px; font-weight: 500; }
+    .content { padding: 20px 24px 24px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .btn {
+      width: 100%;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 12px;
       font-size: 15px;
       font-weight: 600;
-      color: #ffffff;
-      margin-bottom: 4px;
-      letter-spacing: -0.2px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .user-details p {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.6);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .logout-btn {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-      padding: 10px 18px;
-      border: none;
-      border-radius: 9999px;
-      font-size: 12px;
-      font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
-      flex-shrink: 0;
+      transition: all 0.2s ease;
+      font-family: inherit;
     }
-
-    .format-btn {
-      flex: 1;
-      padding: 10px 16px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 9999px;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.7);
+    .btn:hover { transform: scale(1.01); }
+    .btn:active { transform: scale(0.99); }
+    .btn-primary {
+      background: #000;
+      color: #fff;
+    }
+    .btn-secondary {
+      background: #e5e5e5;
+      color: #000;
+      margin-top: 10px;
+    }
+    .btn-secondary:hover { background: #d4d4d4; }
+    .btn-ghost {
+      background: rgba(0,0,0,0.06);
+      color: #666;
+      padding: 8px 14px;
       font-size: 13px;
       font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      width: auto;
+      flex-shrink: 0;
+    }
+    .btn-ghost:hover { background: rgba(0,0,0,0.1); color: #000; }
+    .login-intro {
+      text-align: center;
+      padding: 8px 0 24px;
+      color: #666;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      background: #fff;
+      border-radius: 14px;
+      margin-bottom: 16px;
+    }
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: #fff;
+      flex-shrink: 0;
     }
-
-    .format-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.3);
-      color: rgba(255, 255, 255, 0.9);
+    .user-info { flex: 1; min-width: 0; }
+    .user-info strong { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-info span { font-size: 13px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; margin-top: 2px; }
+    .url-card {
+      padding: 14px 16px;
+      background: #fff;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #666;
+      word-break: break-all;
+      margin-bottom: 16px;
+      line-height: 1.5;
     }
-
-    .format-btn.format-active {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.4);
-      color: #ffffff;
+    .url-label {
+      font-size: 11px;
       font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .loading {
+      text-align: center;
+      padding: 48px 0;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(0,0,0,0.1);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { font-size: 15px; color: #666; font-weight: 500; }
+    .success {
+      text-align: center;
+      padding: 32px 0;
+    }
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: #000;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-weight: 700;
+      font-size: 28px;
+    }
+    .success h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
+    .success p { font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+    .error {
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.08);
+      color: #000;
+      border-radius: 12px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .error.show { display: block; }
+    .shortcut-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 8px;
+      font-size: 12px;
+      color: #666;
+      margin-top: 14px;
+      font-weight: 500;
+    }
+    .shortcut-badge kbd {
+      padding: 2px 6px;
+      background: rgba(0,0,0,0.08);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
     }
   </style>
 </head>
-
 <body>
   <div class="header">
-    <h1>Memory</h1>
-    <p>Web Summarizer</p>
+    <div class="header-text">
+      <h1>Memory</h1>
+      <p>Web Summarizer</p>
+    </div>
   </div>
-
   <div class="content">
-
-    <div id="loginSection" class="login-section">
-      <h2>Welcome to Memory</h2>
-      <p>Sign in to start saving and summarizing web content</p>
+    <div id="loginSection" class="section">
+      <p class="login-intro">Sign in to save and summarize any web page to your knowledge base.</p>
       <button id="loginBtn" class="btn btn-primary">Sign In</button>
       <button id="signupBtn" class="btn btn-secondary">Create Account</button>
     </div>
-
-    <div id="summarySection" class="summary-section">
-      <div id="userInfo" class="user-info">
-        <div class="user-avatar" id="userAvatar">U</div>
-        <div class="user-details">
-          <h4 id="userName">User</h4>
-          <p id="userEmail">user@example.com</p>
+    <div id="summarySection" class="section">
+      <div class="user-card">
+        <div class="avatar" id="userAvatar">U</div>
+        <div class="user-info">
+          <strong id="userName">User</strong>
+          <span id="userEmail">user@example.com</span>
         </div>
-        <button id="logoutBtn" class="logout-btn">Logout</button>
+        <button id="logoutBtn" class="btn btn-ghost">Logout</button>
       </div>
-
-      <div id="currentSite" class="current-site">
-        <h3>Current Page</h3>
-        <p id="siteUrl">Loading...</p>
+      <div class="url-card">
+        <div class="url-label">Current Page</div>
+        <div id="siteUrl">Loading...</div>
       </div>
-
-      <div id="errorMessage" class="error" style="display: none;"></div>
-
-      <div id="formatSelector" style="margin-bottom: 12px;">
-        <label style="display: block; font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-bottom: 8px;">Summary
-          Format</label>
-        <div style="display: flex; gap: 8px;">
-          <button id="formatBullets" class="format-btn format-active" data-format="bullets">
-            Bullets
-          </button>
-          <button id="formatParagraph" class="format-btn" data-format="paragraph">
-            Paragraph
-          </button>
-        </div>
-      </div>
-
+      <div id="errorMessage" class="error"></div>
       <button id="addToMemoryBtn" class="btn btn-primary">Add to Memory</button>
-      <p class="shortcut-hint">
-        Keyboard shortcut:
-        <span class="shortcut-key">Ctrl</span>
-        <span>+</span>
-        <span class="shortcut-key">Shift</span>
-        <span>+</span>
-        <span class="shortcut-key">K</span>
-      </p>
+      <div class="shortcut-badge">
+        <span>Shortcut</span>
+        <kbd id="shortcutKeys">⌘⇧K</kbd>
+      </div>
     </div>
-
-    <div id="loadingSection" class="loading" style="display: none;">
-      <div class="spinner"></div>
-      <p id="loadingText">Loading...</p>
+    <div id="loadingSection" class="section">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p id="loadingText">Loading...</p>
+      </div>
     </div>
-
-    <div id="successSection" class="success" style="display: none;">
-      <div class="success-icon">✓</div>
-      <h3>Added to Memory!</h3>
-      <p>This page has been summarized and saved to your knowledge base.</p>
-      <button id="viewMemoryBtn" class="btn btn-secondary" style="margin-top: 12px;">View in Memory</button>
+    <div id="successSection" class="section">
+      <div class="success">
+        <div class="success-icon">✓</div>
+        <h3>Added to Memory</h3>
+        <p>This page has been summarized and saved to your knowledge base.</p>
+        <button id="viewMemoryBtn" class="btn btn-secondary">View in Memory</button>
+      </div>
     </div>
   </div>
-
+  <script src="config.js"></script>
   <script src="popup.js"></script>
 </body>
-
 </html>
