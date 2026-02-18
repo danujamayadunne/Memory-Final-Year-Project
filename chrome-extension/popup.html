@@ -188,6 +188,33 @@
       font-family: inherit;
       font-size: 11px;
     }
+    .format-selector {
+      display: flex;
+      gap: 0;
+      background: rgba(0,0,0,0.06);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+    .format-option {
+      flex: 1;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: transparent;
+      color: #666;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    .format-option:hover { color: #000; }
+    .format-option.active {
+      background: #fff;
+      color: #000;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
   </style>
 </head>
 <body>
@@ -215,6 +242,10 @@
       <div class="url-card">
         <div class="url-label">Current Page</div>
         <div id="siteUrl">Loading...</div>
+      </div>
+      <div class="format-selector">
+        <button type="button" class="format-option active" data-format="bullets">Bullets</button>
+        <button type="button" class="format-option" data-format="paragraph">Paragraph</button>
       </div>
       <div id="errorMessage" class="error"></div>
       <button id="addToMemoryBtn" class="btn btn-primary">Add to Memory</button>

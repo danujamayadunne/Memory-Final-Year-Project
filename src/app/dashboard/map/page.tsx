@@ -21,7 +21,7 @@ import {
   Loader2,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
+  Maximize2,
   Settings2,
   ExternalLink,
   Search,
@@ -199,9 +199,14 @@ export default function MapPage() {
     }
   }
 
-  const handleFit = () => {
-    if (graphRef.current) graphRef.current.zoomToFit(300, 40)
-  }
+  const handleFit = useCallback(() => {
+    if (graphRef.current) {
+      // Delay to ensure graph bounds are calculated
+      setTimeout(() => {
+        graphRef.current?.zoomToFit(400, 60)
+      }, 50)
+    }
+  }, [])
 
   const filteredGraphData = useMemo(() => {
     if (!searchQuery.trim()) return graphData
@@ -378,7 +383,7 @@ export default function MapPage() {
           <div
             ref={containerRef}
             className="relative w-full overflow-hidden bg-muted/30"
-                style={{ height: "min(70vh, 600px)" }}
+                style={{ height: "min(75vh, 700px)" }}
           >
             {buildingGraph ? (
               <div className="absolute inset-0 flex items-center justify-center bg-background/80">
@@ -425,8 +430,11 @@ export default function MapPage() {
                   backgroundColor="transparent"
                   d3AlphaDecay={0.02}
                   d3VelocityDecay={0.3}
-                  cooldownTicks={100}
-                  onEngineStop={handleFit}
+                  cooldownTicks={200}
+                  onEngineStop={() => {
+                    // Delay so graph bounds are ready before fitting
+                    setTimeout(handleFit, 100)
+                  }}
                   enableNodeDrag
                   enableZoomInteraction
                   enablePanInteraction
@@ -459,8 +467,9 @@ export default function MapPage() {
                     onClick={handleFit}
                     disabled={buildingGraph}
                     aria-label="Fit to view"
+                    title="Fit map to view"
                   >
-                    <RotateCcw className="h-4 w-4" />
+                    <Maximize2 className="h-4 w-4" />
                   </Button>
                 </div>
               </>

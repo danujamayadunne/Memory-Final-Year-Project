@@ -21,6 +21,12 @@ async function init() {
   $('signupBtn').onclick = () => { chrome.tabs.create({ url: `${API_BASE}/auth/signup?extension=true` }); window.close() }
   $('addToMemoryBtn').onclick = addToMemory
   $('logoutBtn').onclick = logout
+  document.querySelectorAll('.format-option').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.format-option').forEach(b => b.classList.remove('active'))
+      btn.classList.add('active')
+    }
+  })
   $('viewMemoryBtn').onclick = () => { chrome.tabs.create({ url: `${API_BASE}/dashboard` }); window.close() }
   const k = $('shortcutKeys')
   if (k) k.textContent = navigator.platform.includes('Mac') ? '⌘⇧K' : 'Ctrl+Shift+K'
@@ -103,17 +109,23 @@ function stopPolling() {
   if (pollId) { clearInterval(pollId); pollId = null }
 }
 
+function getSelectedFormat() {
+  const active = document.querySelector('.format-option.active')
+  return active?.dataset?.format === 'paragraph' ? 'paragraph' : 'bullets'
+}
+
 async function addToMemory() {
   if (!currentTab?.url) { showError('No page'); return }
   show('loading')
   $('loadingText').textContent = 'Adding...'
   const { [STORAGE_KEYS.ACCESS_TOKEN]: token } = await chrome.storage.local.get(STORAGE_KEYS.ACCESS_TOKEN)
   if (!token) { showError('Sign in first'); show('login'); return }
+  const format = getSelectedFormat()
   try {
     const r = await fetch(`${API_BASE}/api/ai/text`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentTab.url, format: 'bullets' })
+      body: JSON.stringify({ url: currentTab.url, format })
     })
     const data = await r.json()
     if (!r.ok) throw new Error(data.error || 'Failed')

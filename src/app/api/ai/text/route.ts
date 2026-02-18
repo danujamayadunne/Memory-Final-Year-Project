@@ -274,7 +274,21 @@ export async function POST(req: NextRequest) {
 
     const cookieStore = await cookies();
     const supabase = await createClient(cookieStore);
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    let user: { id: string } | null = null;
+    let authError: Error | null = null;
+
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+      const { data: { user: u }, error } = await supabase.auth.getUser(token);
+      user = u;
+      authError = error;
+    } else {
+      const { data: { user: u }, error } = await supabase.auth.getUser();
+      user = u;
+      authError = error;
+    }
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -353,6 +367,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ item: transformedItem });
   } catch (e: any) {
+    console.error("[POST /api/ai/text] Error:", e?.message || e);
     return NextResponse.json(
       { error: e?.message || "Unexpected error" },
       { status: 500 }
