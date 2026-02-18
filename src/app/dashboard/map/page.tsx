@@ -21,7 +21,7 @@ import {
   Loader2,
   ZoomIn,
   ZoomOut,
-  Maximize2,
+  RotateCcw,
   Settings2,
   ExternalLink,
   Search,
@@ -92,6 +92,18 @@ export default function MapPage() {
     })
     ro.observe(containerRef.current)
     return () => ro.disconnect()
+  }, [])
+
+  const scheduleZoomToFit = useCallback(() => {
+    const attemptFit = (attempts = 0) => {
+      if (attempts > 20) return
+      if (graphRef.current?.zoomToFit) {
+        graphRef.current.zoomToFit(400, 60)
+      } else {
+        setTimeout(() => attemptFit(attempts + 1), 100)
+      }
+    }
+    setTimeout(() => attemptFit(), 150)
   }, [])
 
   useEffect(() => {
@@ -199,14 +211,9 @@ export default function MapPage() {
     }
   }
 
-  const handleFit = useCallback(() => {
-    if (graphRef.current) {
-      // Delay to ensure graph bounds are calculated
-      setTimeout(() => {
-        graphRef.current?.zoomToFit(400, 60)
-      }, 50)
-    }
-  }, [])
+  const handleFit = () => {
+    if (graphRef.current?.zoomToFit) graphRef.current.zoomToFit(400, 60)
+  }
 
   const filteredGraphData = useMemo(() => {
     if (!searchQuery.trim()) return graphData
@@ -329,8 +336,8 @@ export default function MapPage() {
 
   return (
     <DashboardLayout>
-      <div>
-        <div className="space-y-4">
+      <div className="flex flex-col min-h-0 flex-1">
+        <div className="space-y-4 shrink-0">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative border border-input rounded-lg">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -373,17 +380,17 @@ export default function MapPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-9 pb-5">
+        <div className="flex items-center justify-between pt-9 pb-5 shrink-0">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Map ({filteredGraphData.nodes.length} summaries · {filteredGraphData.links.length} connections)
           </h2>
         </div>
 
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-lg border overflow-hidden flex-1 min-h-[400px]">
           <div
             ref={containerRef}
             className="relative w-full overflow-hidden bg-muted/30"
-                style={{ height: "min(75vh, 700px)" }}
+            style={{ height: "calc(100vh - 280px)", minHeight: 400 }}
           >
             {buildingGraph ? (
               <div className="absolute inset-0 flex items-center justify-center bg-background/80">
@@ -430,11 +437,8 @@ export default function MapPage() {
                   backgroundColor="transparent"
                   d3AlphaDecay={0.02}
                   d3VelocityDecay={0.3}
-                  cooldownTicks={200}
-                  onEngineStop={() => {
-                    // Delay so graph bounds are ready before fitting
-                    setTimeout(handleFit, 100)
-                  }}
+                  cooldownTicks={250}
+                  onEngineStop={scheduleZoomToFit}
                   enableNodeDrag
                   enableZoomInteraction
                   enablePanInteraction
@@ -467,9 +471,8 @@ export default function MapPage() {
                     onClick={handleFit}
                     disabled={buildingGraph}
                     aria-label="Fit to view"
-                    title="Fit map to view"
                   >
-                    <Maximize2 className="h-4 w-4" />
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
                 </div>
               </>
