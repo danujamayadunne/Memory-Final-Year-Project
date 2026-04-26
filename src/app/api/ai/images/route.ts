@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateTextWithImage, generateEmbedding, resolveConfig } from "@/lib/ai/provider";
+import { getUserProviderConfig } from "@/lib/ai/keys";
 import sharp, { type OutputInfo } from "sharp";
-
-const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY as string;
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 type ImageAnalysis = {
   description: string;
@@ -83,115 +81,6 @@ function inferMimeTypeFromUrl(url: string): string {
   if (lowered.endsWith(".gif")) return "image/gif";
   if (lowered.endsWith(".svg")) return "image/svg+xml";
   return "image/jpeg";
-}
-
-async function analyzeImage(base64Image: string, mimeType: string): Promise<ImageAnalysis> {
-  if (!genAI) throw new Error("Missing GOOGLE_GEMINI_API_KEY");
-
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  const prompt =
-    `You are labeling an image for a personal knowledge base. ` +
-    `Return ONLY valid minified JSON with two keys: "description" and "tags". ` +
-    `"description" must be 1-2 complete sentences in English describing the image. ` +
-    `"tags" must be an array of exactly 3 concise English tags (single words or short phrases). ` +
-    `Example: {"description":"...","tags":["tag1","tag2","tag3"]}`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-  try {
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType,
-                data: base64Image,
-              },
-            },
-          ],
-        },
-      ],
-    }, { signal: controller.signal });
-
-    clearTimeout(timeoutId);
-
-    const text = result.response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      throw new Error("Failed to parse image analysis response");
-    }
-
-    try {
-      const parsed = JSON.parse(jsonMatch[0]);
-      const description =
-        typeof parsed.description === "string"
-          ? parsed.description.trim()
-          : "";
-      const tags = Array.isArray(parsed.tags)
-        ? parsed.tags
-            .map((tag: unknown) =>
-              typeof tag === "string" ? tag.trim() : ""
-            )
-            .filter((tag: string) => tag.length > 0)
-            .slice(0, 3)
-        : [];
-
-      return {
-        description,
-        tags,
-      };
-    } catch (error) {
-      throw new Error("Invalid JSON returned from image analysis");
-    }
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    if (error?.message?.includes("model is overloaded")) {
-      throw new Error("Image analysis service is temporarily unavailable. Please try again in a moment.");
-    }
-    if (error?.name === "AbortError") {
-      throw new Error("Image analysis timed out. Please try again.");
-    }
-    throw error;
-  }
-}
-
-async function generateEmbedding(text: string): Promise<number[]> {
-  if (!GEMINI_API_KEY) {
-    throw new Error("Missing GOOGLE_GEMINI_API_KEY");
-  }
-
-  const payload = text.slice(0, 8000);
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "models/gemini-embedding-001",
-        output_dimensionality: 768,
-        content: { parts: [{ text: payload }] },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Embedding API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-
-  if (!data.embedding || !data.embedding.values) {
-    throw new Error("Unexpected embedding response format");
-  }
-
-  return data.embedding.values as number[];
 }
 
 function sanitizeTags(tags: string[]): string[] {
@@ -296,8 +185,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userConfig = await getUserProviderConfig(supabase, user.id);
+    const config = resolveConfig(userConfig);
+
     const { base64, mimeType, binary } = await fetchImageAsBase64(imageUrl);
-    const analysis = await analyzeImage(base64, mimeType);
+
+    const imagePrompt =
+      `You are labeling an image for a personal knowledge base. ` +
+      `Return ONLY valid minified JSON with two keys: "description" and "tags". ` +
+      `"description" must be 1-2 complete sentences in English describing the image. ` +
+      `"tags" must be an array of exactly 3 concise English tags (single words or short phrases). ` +
+      `Example: {"description":"...","tags":["tag1","tag2","tag3"]}`;
+
+    const analysisText = await generateTextWithImage(config, imagePrompt, base64, mimeType);
+    let analysis: ImageAnalysis = { description: "", tags: [] };
+
+    const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        analysis.description = typeof parsed.description === "string" ? parsed.description.trim() : "";
+        analysis.tags = Array.isArray(parsed.tags)
+          ? parsed.tags
+              .map((tag: unknown) => typeof tag === "string" ? tag.trim() : "")
+              .filter((tag: string) => tag.length > 0)
+              .slice(0, 3)
+          : [];
+      } catch {
+        throw new Error("Invalid JSON returned from image analysis");
+      }
+    }
+
     const colorTag = await extractDominantColorTag(binary);
     const tags = sanitizeTags([
       ...analysis.tags,
@@ -351,5 +269,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-

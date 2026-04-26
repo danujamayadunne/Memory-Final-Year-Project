@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { embeddingCache } from "@/lib/embedding-cache";
+import { generateEmbedding } from "@/lib/ai/provider";
 
 const COLOR_KEYWORDS = [
   "red",
@@ -20,8 +21,6 @@ const COLOR_KEYWORDS = [
   "magenta",
   "teal",
 ];
-
-const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY as string;
 
 function cosineSimilarity(vec1: number[], vec2: number[]): number {
   if (vec1.length !== vec2.length) {
@@ -43,40 +42,11 @@ function cosineSimilarity(vec1: number[], vec2: number[]): number {
   return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
 }
 
-async function generateEmbedding(text: string): Promise<number[]> {
+async function getCachedEmbedding(text: string): Promise<number[]> {
   const cached = embeddingCache.get(text);
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
-  if (!GEMINI_API_KEY) {
-    throw new Error("Missing GOOGLE_GEMINI_API_KEY");
-  }
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "models/gemini-embedding-001",
-        output_dimensionality: 768,
-        content: { parts: [{ text: text.slice(0, 10000) }] },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Embedding API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  if (!data.embedding || !data.embedding.values) {
-    throw new Error("Unexpected embedding response format");
-  }
-
-  const embedding = data.embedding.values;
+  const embedding = await generateEmbedding(text);
   embeddingCache.set(text, embedding);
   return embedding;
 }
@@ -126,7 +96,7 @@ export async function POST(req: NextRequest) {
     const queryColors = COLOR_KEYWORDS.filter((color) =>
       queryLower.includes(color)
     );
-    const queryEmbedding = await generateEmbedding(trimmedQuery);
+    const queryEmbedding = await getCachedEmbedding(trimmedQuery);
 
     const { data: rows, error } = await supabase
       .from("image_memories")
@@ -225,5 +195,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-

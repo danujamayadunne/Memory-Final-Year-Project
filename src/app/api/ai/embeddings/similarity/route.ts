@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
-
-const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY as string;
+import { generateEmbedding } from "@/lib/ai/provider";
 
 const embeddingCache = new Map<string, number[]>();
 const similarityCache = new Map<string, number>();
@@ -13,7 +12,6 @@ function getCacheKey(text1: string, text2: string): string {
 }
 
 function getTextHash(text: string): string {
-
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
     const char = text.charCodeAt(i);
@@ -23,49 +21,15 @@ function getTextHash(text: string): string {
   return hash.toString();
 }
 
-async function generateEmbedding(text: string): Promise<number[]> {
-  if (!GEMINI_API_KEY) {
-    throw new Error("Missing GOOGLE_GEMINI_API_KEY");
-  }
-
+async function getCachedEmbedding(text: string): Promise<number[]> {
   const textHash = getTextHash(text);
   if (embeddingCache.has(textHash)) {
     return embeddingCache.get(textHash)!;
   }
 
-  try {
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "models/gemini-embedding-001",
-          output_dimensionality: 768,
-          content: { parts: [{ text: text.slice(0, 10000) }] }
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Embedding API error: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-
-    if (data.embedding && data.embedding.values) {
-      const embedding = data.embedding.values;
-      embeddingCache.set(textHash, embedding);
-      return embedding;
-    }
-
-    throw new Error("Unexpected embedding response format");
-  } catch (error: any) {
-    console.error("Error generating embedding:", error);
-    throw error;
-  }
+  const embedding = await generateEmbedding(text);
+  embeddingCache.set(textHash, embedding);
+  return embedding;
 }
 
 function cosineSimilarity(vec1: number[], vec2: number[]): number {
@@ -116,8 +80,8 @@ export async function PUT(req: NextRequest) {
     }
 
     const [embedding1, embedding2] = await Promise.all([
-      generateEmbedding(text1),
-      generateEmbedding(text2),
+      getCachedEmbedding(text1),
+      getCachedEmbedding(text2),
     ]);
 
     const similarity = cosineSimilarity(embedding1, embedding2);

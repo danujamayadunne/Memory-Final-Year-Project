@@ -226,7 +226,6 @@ export default function NotesPage() {
             if (data.sourceUrl) sourceUrl = data.sourceUrl
             if (data.sourceTitle !== undefined) sourceTitle = data.sourceTitle
           } catch {
-            // skip invalid JSON
           }
         }
       }
@@ -237,13 +236,11 @@ export default function NotesPage() {
           if (data.sourceUrl) sourceUrl = data.sourceUrl
           if (data.sourceTitle !== undefined) sourceTitle = data.sourceTitle
         } catch {
-          // skip
         }
       }
       const importedContent = markdownToTiptapWithCitation(fullText, sourceUrl, sourceTitle)
       setContent(importedContent as unknown as TiptapContent)
       if (selectedNote) {
-        // Debounced save will persist after editor parses HTML and onChange fires
       } else {
         const createRes = await fetch("/api/notes", {
           method: "POST",
@@ -308,31 +305,31 @@ export default function NotesPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col sm:flex-row gap-4 h-[calc(100vh-10rem)]">
-        <aside className="w-full sm:w-56 shrink-0 flex flex-col gap-2">
-          <div className="flex gap-1.5">
+      <div className="flex flex-col sm:flex-row gap-6 h-[calc(100vh-8rem)]">
+        <aside className="w-full sm:w-72 shrink-0 flex flex-col gap-3">
+          <div className="flex gap-2">
             <div className="flex-1 relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Search"
+                placeholder="Search notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-9 text-sm border rounded-md"
+                className="pl-9 h-10 text-sm border rounded-lg"
               />
             </div>
-            <Button size="icon" className="h-9 w-9 shrink-0 rounded-md" onClick={handleCreateNote}>
+            <Button size="icon" className="h-10 w-10 shrink-0 rounded-lg" onClick={handleCreateNote}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0 rounded-md border border-border/60">
+          <div className="flex-1 overflow-y-auto min-h-0 rounded-lg border border-border/60">
             {loading ? (
-              <div className="p-3 flex justify-center">
+              <div className="p-6 flex justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : filteredNotes.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">
-                <p>No notes</p>
-                <p className="mt-0.5">New note or import</p>
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                <p>No notes yet</p>
+                <p className="mt-1 text-xs">Create a new note or import</p>
               </div>
             ) : (
               <div className="divide-y divide-border/60">
@@ -344,28 +341,28 @@ export default function NotesPage() {
                       setContent(note.content || DEFAULT_CONTENT)
                       setTitle(note.title || "Untitled Note")
                     }}
-                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors hover:bg-muted/40 group ${
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40 group ${
                       selectedNote?.id === note.id ? "bg-muted/50" : ""
                     }`}
                   >
-                    <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">
+                      <p className="text-sm font-medium truncate">
                         {note.title || "Untitled Note"}
                       </p>
-                      <p className="text-[10px] text-muted-foreground/80">
+                      <p className="text-xs text-muted-foreground/80 mt-0.5">
                         {new Date(note.updated_at).toLocaleDateString()}
                       </p>
                     </div>
                     <button
                       type="button"
-                      className="p-1 rounded opacity-0 group-hover:opacity-100 text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                      className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation()
                         handleDeleteNote(note.id)
                       }}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
@@ -377,37 +374,37 @@ export default function NotesPage() {
         <main className="flex-1 min-w-0 flex flex-col min-h-0">
           {selectedNote ? (
             <>
-              <div className="flex items-center gap-2 mb-2 shrink-0">
+              <div className="flex items-center gap-3 mb-3 shrink-0">
                 <Input
                   value={title}
                   onChange={(e) => {
                     setTitle(e.target.value)
                     handleTitleChange(e.target.value)
                   }}
-                  className="text-base font-semibold border rounded-md px-3 py-2 h-10 focus-visible:ring-2 shadow-none"
+                  className="text-lg font-semibold border rounded-lg px-4 py-2.5 h-12 focus-visible:ring-2 shadow-none"
                   placeholder="Note title"
                 />
                 {saving && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                 )}
               </div>
-              <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-md border border-border/60 p-3">
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-lg border border-border/60 p-5">
                 <TiptapEditor
                   content={content}
                   onChange={handleContentChange}
                   onImportClick={() => setShowImportDialog(true)}
-                  placeholder="Write..."
+                  placeholder="Start writing..."
                   className="h-full"
                 />
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center rounded-md border border-dashed border-border/60">
+            <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-border/60">
               <div className="text-center">
-                <FileText className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-muted-foreground text-xs mb-3">No note selected</p>
-                <Button onClick={handleCreateNote} size="sm" variant="ghost" className="h-8 text-xs">
-                  <Plus className="h-3.5 w-3.5" />
+                <FileText className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm mb-4">No note selected</p>
+                <Button onClick={handleCreateNote} size="sm" variant="ghost" className="h-9 text-sm">
+                  <Plus className="h-4 w-4" />
                   New note
                 </Button>
               </div>
@@ -417,22 +414,22 @@ export default function NotesPage() {
       </div>
 
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent className="max-h-[85vh] w-full max-w-[480px] overflow-hidden rounded-xl">
+        <DialogContent className="max-h-[85vh] w-full max-w-lg overflow-hidden rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-base">Import from summary</DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogTitle className="text-lg">Import from summary</DialogTitle>
+            <DialogDescription className="text-sm">
               AI will read your note and intelligently integrate the summary. Source is cited automatically.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[55vh] overflow-y-auto">
             {loadingSummaries ? (
-              <div className="p-6 flex justify-center">
+              <div className="p-8 flex justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : summaries.length === 0 ? (
-              <div className="p-6 text-center text-xs text-muted-foreground">
+              <div className="p-8 text-center text-sm text-muted-foreground">
                 <p>No summaries yet</p>
-                <Link href="/dashboard" className="text-primary hover:underline mt-1 inline-block">
+                <Link href="/dashboard" className="text-primary hover:underline mt-2 inline-block text-sm">
                   Add a link first
                 </Link>
               </div>
@@ -441,18 +438,18 @@ export default function NotesPage() {
                 {summaries.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-start gap-3 px-3 py-2.5 hover:bg-muted/40 cursor-pointer transition-colors"
+                    className="flex items-start gap-3 px-4 py-3.5 hover:bg-muted/40 cursor-pointer transition-colors"
                     onClick={() => handleImportSummary(item)}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-xs truncate">
+                      <p className="font-medium text-sm truncate">
                         {item.title || item.url}
                       </p>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                         {item.summary}
                       </p>
                     </div>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/70 mt-0.5" />
                   </div>
                 ))}
               </div>
@@ -462,7 +459,7 @@ export default function NotesPage() {
             <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-xl">
               <div className="text-center">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">AI is integrating...</p>
+                <p className="text-sm text-muted-foreground">AI is integrating...</p>
               </div>
             </div>
           )}

@@ -1,12 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-
-const apiKey =
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-  process.env.GOOGLE_GEMINI_API_KEY
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
+import { streamText, resolveConfig } from "@/lib/ai/provider"
+import { getUserProviderConfig } from "@/lib/ai/keys"
 
 export const maxDuration = 30
 
@@ -52,35 +48,10 @@ export async function POST(req: Request) {
       )
     }
 
-    if (!genAI) {
-      return NextResponse.json(
-        { error: "AI service not configured" },
-        { status: 500 }
-      )
-    }
+    const userConfig = await getUserProviderConfig(supabase, user.id)
+    const config = resolveConfig(userConfig)
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.2,
-        topK: 10,
-        topP: 0.7,
-        maxOutputTokens: 4096,
-      },
-    })
-
-    const response = await model.generateContentStream({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `${SYSTEM_PROMPT}\n\nComplete this text (DO NOT repeat any part of it). Generate 500 words: "${prompt}"`,
-            },
-          ],
-        },
-      ],
-    })
+    const completionPrompt = `Complete this text (DO NOT repeat any part of it). Generate 500 words: "${prompt}"`
 
     const stream = new TransformStream()
     const writer = stream.writable.getWriter()
@@ -88,42 +59,43 @@ export async function POST(req: Request) {
 
     ;(async () => {
       try {
-        for await (const chunk of response.stream) {
-          const text = typeof chunk.text === "function" ? chunk.text() : chunk.text
-          if (text) {
-            let completedText = text.trim()
+        for await (const chunk of streamText(config, completionPrompt, {
+          temperature: 0.2,
+          maxTokens: 4096,
+          systemPrompt: SYSTEM_PROMPT,
+        })) {
+          let completedText = chunk.trim()
 
-            if (prompt.endsWith(" ") && completedText.startsWith(" ")) {
-              completedText = completedText.slice(1)
-            }
+          if (prompt.endsWith(" ") && completedText.startsWith(" ")) {
+            completedText = completedText.slice(1)
+          }
 
-            const words = prompt.split(" ")
-            const lastWord = words[words.length - 1]
-            if (
-              lastWord &&
-              completedText.toLowerCase().startsWith(lastWord.toLowerCase())
-            ) {
-              completedText = completedText.slice(lastWord.length).trim()
-            }
+          const words = prompt.split(" ")
+          const lastWord = words[words.length - 1]
+          if (
+            lastWord &&
+            completedText.toLowerCase().startsWith(lastWord.toLowerCase())
+          ) {
+            completedText = completedText.slice(lastWord.length).trim()
+          }
 
-            if (completedText.toLowerCase().startsWith(prompt.toLowerCase())) {
-              completedText = completedText.slice(prompt.length).trim()
-            }
+          if (completedText.toLowerCase().startsWith(prompt.toLowerCase())) {
+            completedText = completedText.slice(prompt.length).trim()
+          }
 
-            const firstWord = completedText.split(" ")[0]
-            if (
-              firstWord &&
-              lastWord &&
-              firstWord.toLowerCase() === lastWord.toLowerCase()
-            ) {
-              completedText = completedText.slice(firstWord.length).trim()
-            }
+          const firstWord = completedText.split(" ")[0]
+          if (
+            firstWord &&
+            lastWord &&
+            firstWord.toLowerCase() === lastWord.toLowerCase()
+          ) {
+            completedText = completedText.slice(firstWord.length).trim()
+          }
 
-            if (completedText) {
-              await writer.write(
-                encoder.encode(JSON.stringify({ text: completedText }) + "\n")
-              )
-            }
+          if (completedText) {
+            await writer.write(
+              encoder.encode(JSON.stringify({ text: completedText }) + "\n")
+            )
           }
         }
       } catch (error) {

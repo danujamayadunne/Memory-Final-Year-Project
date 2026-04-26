@@ -57,7 +57,6 @@ async function runCompletion(editor: {
             insertPos = from + (editor.state.doc.content.size - docSizeBefore)
           }
         } catch {
-          // skip invalid JSON lines
         }
       }
     }
@@ -71,7 +70,6 @@ async function runCompletion(editor: {
           insertPos = from + (editor.state.doc.content.size - docSizeBefore)
         }
       } catch {
-        // skip
       }
     }
 

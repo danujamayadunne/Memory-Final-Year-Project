@@ -155,7 +155,7 @@ export function TiptapEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm dark:prose-invert max-w-none min-h-[180px] focus:outline-none py-2 break-words prose-h1:text-xl prose-h1:font-bold prose-h2:text-lg prose-h2:font-semibold prose-h3:text-base prose-h3:font-medium",
+          "prose dark:prose-invert max-w-none min-h-[240px] focus:outline-none py-3 break-words prose-h1:text-2xl prose-h1:font-bold prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-h3:font-medium prose-p:leading-relaxed prose-li:leading-relaxed",
       },
     },
   })
@@ -170,19 +170,19 @@ export function TiptapEditor({
 
   if (!editor) return null
 
-  const btn = "p-1.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+  const btn = "p-2 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
 
   return (
     <div className={cn("min-w-0 flex flex-col h-full", className)}>
       {editable && (
-        <div className="flex items-center gap-1 py-2 mb-1 border-b border-border/60 shrink-0">
+        <div className="flex items-center gap-1 py-2.5 mb-2 border-b border-border/60 shrink-0">
           <button
             type="button"
             className={cn(btn, editor.isActive("bold") && "bg-muted text-foreground")}
             onClick={() => editor.chain().focus().toggleBold().run()}
             title="Bold"
           >
-            <Bold className="h-3.5 w-3.5" />
+            <Bold className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -190,7 +190,7 @@ export function TiptapEditor({
             onClick={() => editor.chain().focus().toggleItalic().run()}
             title="Italic"
           >
-            <Italic className="h-3.5 w-3.5" />
+            <Italic className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -198,7 +198,7 @@ export function TiptapEditor({
             onClick={() => editor.chain().focus().toggleStrike().run()}
             title="Strikethrough"
           >
-            <Strikethrough className="h-3.5 w-3.5" />
+            <Strikethrough className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -206,7 +206,7 @@ export function TiptapEditor({
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             title="Bullet list"
           >
-            <List className="h-3.5 w-3.5" />
+            <List className="h-4 w-4" />
           </button>
           <Select
             value={
@@ -224,7 +224,7 @@ export function TiptapEditor({
               else editor.chain().focus().setParagraph().run()
             }}
           >
-            <SelectTrigger className="h-8 w-[110px] border-0 bg-transparent shadow-none text-xs" size="sm">
+            <SelectTrigger className="h-9 w-[120px] border-0 bg-transparent shadow-none text-sm" size="sm">
               <SelectValue placeholder="Paragraph" />
             </SelectTrigger>
             <SelectContent>
@@ -235,32 +235,32 @@ export function TiptapEditor({
             </SelectContent>
           </Select>
           <button type="button" className={btn} onClick={() => editor.chain().focus().undo().run()} title="Undo">
-            <Undo className="h-3.5 w-3.5" />
+            <Undo className="h-4 w-4" />
           </button>
           <button type="button" className={btn} onClick={() => editor.chain().focus().redo().run()} title="Redo">
-            <Redo className="h-3.5 w-3.5" />
+            <Redo className="h-4 w-4" />
           </button>
           {onImportClick && (
             <>
-              <span className="mx-1 w-px h-4 bg-border/60" />
+              <span className="mx-1.5 w-px h-5 bg-border/60" />
               <button
                 type="button"
-                className={cn(btn, "flex items-center gap-1 text-[10px]")}
+                className={cn(btn, "flex items-center gap-1.5 text-xs")}
                 onClick={onImportClick}
                 title="Import from summary"
               >
-                <BookOpen className="h-3.5 w-3.5" />
+                <BookOpen className="h-4 w-4" />
                 Import
               </button>
             </>
           )}
-          <span className="mx-1 w-px h-4 bg-border/60" />
+          <span className="mx-1.5 w-px h-5 bg-border/60" />
           <span
-            className="flex items-center gap-1 text-[10px] text-muted-foreground"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
             title="Press Shift+Ctrl+Z for AI autocomplete"
           >
-            <Sparkles className="h-3 w-3" />
-            ⇧⌃Z AI autocomplete
+            <Sparkles className="h-3.5 w-3.5" />
+            ⇧⌃Z AI
           </span>
         </div>
       )}

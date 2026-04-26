@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { BookOpen, Search, Clock, ExternalLink, Trash2, MessageCircle, Link as LinkIcon, Tags, Loader2, Sparkles } from "lucide-react"
+import { Search, Clock, ExternalLink, Trash2, MessageCircle, Link as LinkIcon, Tags, Loader2, Sparkles } from "lucide-react"
 import { ChatSheet } from "@/components/dashboard/chat-sheet"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { SummaryDialog } from "@/components/dashboard/summary-dialog"
@@ -298,7 +298,6 @@ export default function SummariesPage() {
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="rounded-lg border border-dashed py-16 px-6 text-center">
-            <BookOpen className="h-10 w-10 text-muted-foreground/60 mx-auto mb-4" />
             <p className="text-muted-foreground text-sm mb-1">No summaries found</p>
             <p className="text-muted-foreground/80 text-sm mb-4">
               {searchTerm || selectedTag !== "all"

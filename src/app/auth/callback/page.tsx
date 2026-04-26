@@ -35,7 +35,6 @@ export default function AuthCallbackPage() {
             window.postMessage({ type: 'MEMORY_AUTH_SUCCESS', data: authData }, '*')
             setTimeout(() => window.close(), 150)
           } else {
-            // Redirect to dashboard for normal web flow
             window.location.href = "/dashboard"
           }
         }

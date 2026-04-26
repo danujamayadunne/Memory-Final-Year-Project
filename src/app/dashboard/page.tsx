@@ -7,7 +7,7 @@ import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, BookOpen, Clock, ExternalLink, Loader2, ChevronRight } from "lucide-react"
+import { Plus, Clock, ExternalLink, Loader2, ChevronRight } from "lucide-react"
 import { SimpleTagDialog } from "@/components/dashboard/simple-tag-dialog"
 import { ChatSheet } from "@/components/dashboard/chat-sheet"
 import { SummaryDialog } from "@/components/dashboard/summary-dialog"
@@ -268,7 +268,6 @@ export default function DashboardPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="rounded-lg border border-dashed py-16 px-6 text-center">
-              <BookOpen className="h-10 w-10 text-muted-foreground/60 mx-auto mb-4" />
               <p className="text-muted-foreground text-sm mb-1">No summaries yet</p>
               <p className="text-muted-foreground/80 text-sm">
                 Add a link above to create your first summary

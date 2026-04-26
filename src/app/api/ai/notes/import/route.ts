@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { GoogleGenerativeAI } from "@google/generative-ai"
-
-const apiKey =
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-  process.env.GOOGLE_GEMINI_API_KEY
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
+import { streamText, resolveConfig } from "@/lib/ai/provider"
+import { getUserProviderConfig } from "@/lib/ai/keys"
 
 export const maxDuration = 30
 
@@ -71,26 +67,10 @@ export async function POST(req: NextRequest) {
       ? extractPlainText(noteContent as Record<string, unknown>)
       : ""
 
-    if (!genAI) {
-      return NextResponse.json(
-        { error: "AI service not configured" },
-        { status: 500 }
-      )
-    }
+    const userConfig = await getUserProviderConfig(supabase, user.id)
+    const config = resolveConfig(userConfig)
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.5,
-        topK: 10,
-        topP: 0.7,
-        maxOutputTokens: 4096,
-      },
-    })
-
-    const prompt = `${SYSTEM_PROMPT}
-
-CURRENT NOTE:
+    const prompt = `CURRENT NOTE:
 ${currentNoteText || "(empty)"}
 
 SUMMARY TO INTEGRATE (from: ${summary.title || summary.url}):
@@ -98,35 +78,34 @@ ${summary.summary}
 
 Rewrite this entirely into a fresh, original note (do not copy the summary):`
 
-    const response = await model.generateContentStream({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-    })
-
-    const stream = new TransformStream()
-    const writer = stream.writable.getWriter()
+    const transformStream = new TransformStream()
+    const writer = transformStream.writable.getWriter()
     const encoder = new TextEncoder()
 
-      ; (async () => {
-        try {
-          for await (const chunk of response.stream) {
-            const text = typeof chunk.text === "function" ? chunk.text() : chunk.text
-            if (text?.trim()) {
-              await writer.write(
-                encoder.encode(JSON.stringify({ text: text.trim() }) + "\n")
-              )
-            }
+    ;(async () => {
+      try {
+        for await (const chunk of streamText(config, prompt, {
+          temperature: 0.5,
+          maxTokens: 4096,
+          systemPrompt: SYSTEM_PROMPT,
+        })) {
+          if (chunk?.trim()) {
+            await writer.write(
+              encoder.encode(JSON.stringify({ text: chunk.trim() }) + "\n")
+            )
           }
-        } catch (error) {
-          console.error("Import stream error:", error)
-        } finally {
-          await writer.write(
-            encoder.encode(JSON.stringify({ sourceUrl: summary.url, sourceTitle: summary.title }) + "\n")
-          )
-          await writer.close()
         }
-      })()
+      } catch (error) {
+        console.error("Import stream error:", error)
+      } finally {
+        await writer.write(
+          encoder.encode(JSON.stringify({ sourceUrl: summary.url, sourceTitle: summary.title }) + "\n")
+        )
+        await writer.close()
+      }
+    })()
 
-    return new Response(stream.readable, {
+    return new Response(transformStream.readable, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
