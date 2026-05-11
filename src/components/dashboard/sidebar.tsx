@@ -44,6 +44,7 @@ import {
   ChevronRight,
   FileText,
   StickyNote,
+  Brain,
 } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 
@@ -69,6 +70,11 @@ const data = {
           icon: ImageIcon,
         },
       ],
+    },
+    {
+      title: "My Memory",
+      url: "/dashboard/memory",
+      icon: Brain,
     },
     {
       title: "Notes",
@@ -104,15 +110,10 @@ export function AppSidebar() {
   return (
     <Sidebar variant="inset">
       <SidebarHeader className="border-b border-sidebar-border/50">
-        <Link href="/dashboard" className="flex items-center gap-3 px-3 py-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-sm">
-            <BookOpen className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-serif text-lg font-medium tracking-tight">Memory</span>
-            <span className="text-xs text-muted-foreground">Web Summarizer</span>
-          </div>
-        </Link>
+        <div className="flex flex-col px-3">
+          <span className="font-serif text-lg font-medium tracking-tight">Memory</span>
+          <span className="text-xs text-muted-foreground">Web Summarizer</span>
+        </div>
       </SidebarHeader>
       <SidebarContent className="flex flex-col gap-1">
         <SidebarGroup className="py-2">
@@ -248,10 +249,10 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
+                  className="w-[--radix-dropdown-menu-trigger-width] rounded-xl"
                   side="top"
-                  align="end"
-                  sideOffset={8}
+                  align="center"
+                  sideOffset={9}
                 >
                   <DropdownMenuLabel className="p-0 font-normal">
                     <div className="flex items-center gap-3 px-3 py-3 text-left text-sm">
