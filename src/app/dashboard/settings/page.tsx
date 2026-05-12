@@ -533,7 +533,6 @@ export default function SettingsPage() {
           </div>
         ) : null}
 
-        {/* Embeddings Note */}
         <div className="pt-10">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider pb-4">
             About Embeddings

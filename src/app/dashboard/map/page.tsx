@@ -562,7 +562,6 @@ export default function MapPage() {
                 </filter>
               </defs>
 
-              {/* Links (in world space, scale with camera) */}
               <g transform={`translate(${cam.x},${cam.y}) scale(${cam.scale})`}>
                 {links.map((link, i) => {
                   const s = nodeMap.get(link.source)
@@ -585,7 +584,6 @@ export default function MapPage() {
                 })}
               </g>
 
-              {/* Nodes (positioned in screen space, constant pixel size) */}
               {nodes.map(node => {
                 const sx = cam.x + node.x * cam.scale
                 const sy = cam.y + node.y * cam.scale
@@ -599,21 +597,18 @@ export default function MapPage() {
                     transform={`translate(${sx},${sy})`}
                     opacity={active ? 1 : 0.18}
                   >
-                    {/* Card body with clip for accent */}
                     <g clipPath="url(#nodeClip)" filter={isH || isS ? "url(#cardShadow)" : undefined}>
                       <rect
                         x={-NODE_W / 2} y={-NODE_H / 2}
                         width={NODE_W} height={NODE_H}
                         fill="var(--card)"
                       />
-                      {/* Left accent bar */}
                       <rect
                         x={-NODE_W / 2} y={-NODE_H / 2}
                         width={5} height={NODE_H}
                         fill={node.color}
                       />
                     </g>
-                    {/* Border */}
                     <rect
                       x={-NODE_W / 2} y={-NODE_H / 2}
                       width={NODE_W} height={NODE_H}
@@ -622,7 +617,6 @@ export default function MapPage() {
                       stroke={isH || isS ? node.color : "var(--border)"}
                       strokeWidth={isH || isS ? 1.8 : 1}
                     />
-                    {/* Label */}
                     <text
                       x={4} y={1}
                       textAnchor="middle"
@@ -641,7 +635,6 @@ export default function MapPage() {
             </svg>
           )}
 
-          {/* Hover tooltip */}
           {(() => {
             const hId = hoveredRef.current
             if (!hId || dragRef.current) return null
@@ -706,7 +699,6 @@ export default function MapPage() {
             )
           })()}
 
-          {/* Zoom controls */}
           {items.length > 0 && (
             <div className="absolute bottom-4 right-4 flex flex-col gap-1 rounded-lg border bg-background/90 p-1 backdrop-blur-sm shadow-sm">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => zoomBy(1.5)}>
@@ -723,7 +715,6 @@ export default function MapPage() {
           )}
         </div>
 
-        {/* Detail sheet */}
         <Sheet open={sheetOpen} onOpenChange={(open) => {
           setSheetOpen(open)
           if (!open) { selectedIdRef.current = null; rerender() }
