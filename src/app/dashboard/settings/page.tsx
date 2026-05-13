@@ -168,7 +168,7 @@ export default function AccountSettingsPage() {
                   <AlertDialogFooter>
                     <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      className="rounded-lg bg-destructive text-white hover:bg-destructive/90"
                       onClick={() => void handleDeleteAccount()}
                     >
                       Delete forever

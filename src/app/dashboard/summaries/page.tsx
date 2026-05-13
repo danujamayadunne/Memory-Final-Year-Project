@@ -238,15 +238,15 @@ export default function SummariesPage() {
           </div>
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Semantic Search
+              </span>
               <Switch
                 id="semantic-search"
                 checked={useSemanticSearch}
                 onCheckedChange={setUseSemanticSearch}
               />
-              <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                Semantic search
-              </span>
             </label>
             {searchTerm.trim() && (
               <span className="text-xs text-muted-foreground">
