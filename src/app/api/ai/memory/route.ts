@@ -169,6 +169,16 @@ function normalizeForMatch(s: string): string {
     .trim();
 }
 
+/** Avoids substring false positives (e.g. token "man" matching "woman"). Short tokens must match a whole word. */
+function lexicalTokenMatchesDoc(docNorm: string, token: string): boolean {
+  if (!token) return false;
+  if (token.length <= 3) {
+    const words = docNorm.split(/\s+/).filter(Boolean);
+    return words.some((w) => w === token);
+  }
+  return docNorm.includes(token);
+}
+
 function meaningfulQueryTokens(normalizedQuery: string): string[] {
   return normalizedQuery.split(/\s+/).filter((w) => w.length >= 2 && !MEMORY_STOPWORDS.has(w));
 }
@@ -202,8 +212,9 @@ function imagePassesLexicalGate(
   if (gateTokens.length === 0) return true;
   const significant = gateTokens.filter((t) => t.length >= 4);
   const required = significant.length > 0 ? significant : gateTokens;
-  if (required.some((t) => docNorm.includes(t))) return true;
-  return semanticScore >= 0.44;
+  if (required.some((t) => lexicalTokenMatchesDoc(docNorm, t))) return true;
+  // Topic queries need strong embedding alignment; 0.44 lets unrelated art rank too often.
+  return semanticScore >= 0.63;
 }
 
 function isBroadImageListingQuery(norm: string): boolean {
@@ -232,8 +243,29 @@ function summaryPassesLexicalGate(
   if (contentTokens.length === 0) return true;
   const significant = contentTokens.filter((t) => t.length >= 4);
   const required = significant.length > 0 ? significant : contentTokens;
-  if (required.some((t) => docNorm.includes(t))) return true;
+  if (required.some((t) => lexicalTokenMatchesDoc(docNorm, t))) return true;
   return semanticScore >= 0.58;
+}
+
+function queryLikelyAboutImages(normalizedQuery: string): boolean {
+  const words = normalizedQuery.split(/\s+/).filter(Boolean);
+  return words.some((w) => IMAGE_QUERY_FRAMING_WORDS.has(w));
+}
+
+function orderMemorySourcesForDisplay(
+  normalizedQuery: string,
+  sources: SourceItem[]
+): SourceItem[] {
+  if (queryLikelyAboutImages(normalizedQuery)) {
+    return [...sources].sort(
+      (a, b) => (b.similarity || 0) - (a.similarity || 0)
+    );
+  }
+  const text = sources.filter((s) => s.type !== "image");
+  const images = sources.filter((s) => s.type === "image");
+  const byScore = (a: SourceItem, b: SourceItem) =>
+    (b.similarity || 0) - (a.similarity || 0);
+  return [...text.sort(byScore), ...images.sort(byScore)];
 }
 
 function pruneSourcesByMargin(sources: SourceItem[]): SourceItem[] {
@@ -319,9 +351,9 @@ function pickBySemanticTier<T extends { semanticScore: number }>(
 function pickImageSemanticTier<T extends { semanticScore: number }>(
   items: T[]
 ): T[] {
-  const high = items.filter((i) => i.semanticScore >= 0.56);
+  const high = items.filter((i) => i.semanticScore >= 0.62);
   if (high.length > 0) return high;
-  return items.filter((i) => i.semanticScore >= 0.5);
+  return items.filter((i) => i.semanticScore >= 0.58);
 }
 
 type SourceItem = {
@@ -400,7 +432,7 @@ export async function POST(req: NextRequest) {
 
         const phraseMatched = queryNorm.length >= 2 && docNorm.includes(queryNorm);
         const phraseHit = phraseMatched ? 0.35 : 0;
-        const wordMatchCount = contentTokens.filter((w) => docNorm.includes(w)).length;
+        const wordMatchCount = contentTokens.filter((w) => lexicalTokenMatchesDoc(docNorm, w)).length;
         const wordScore =
           contentTokens.length > 0 ? (wordMatchCount / contentTokens.length) * 0.32 : 0;
         const keywordScore = Math.max(phraseHit, wordScore);
@@ -462,7 +494,7 @@ export async function POST(req: NextRequest) {
           const phraseMatched = noteQueryNorm.length >= 2 && docNorm.includes(noteQueryNorm);
           const textMatch = phraseMatched ? 0.35 : 0;
 
-          const wordMatchCount = noteTokens.filter((w) => docNorm.includes(w)).length;
+          const wordMatchCount = noteTokens.filter((w) => lexicalTokenMatchesDoc(docNorm, w)).length;
           const wordScore =
             noteTokens.length > 0 ? (wordMatchCount / noteTokens.length) * 0.3 : 0;
 
@@ -499,14 +531,16 @@ export async function POST(req: NextRequest) {
           imageQueryNorm.length >= 2 && docNorm.includes(imageQueryNorm);
         const tokenContentHit =
           imageSubstantive.length > 0 &&
-          imageSubstantive.some((t) => docNorm.includes(t));
+          imageSubstantive.some((t) => lexicalTokenMatchesDoc(docNorm, t));
         const tagHit =
           Array.isArray(img.tags) &&
           img.tags.some((t: string) => {
             const tn = normalizeForMatch(String(t));
             return (
               (imageQueryNorm.length >= 2 && tn.includes(imageQueryNorm)) ||
-              imageSubstantive.some((tok) => tok.length >= 2 && tn.includes(tok))
+              imageSubstantive.some(
+                (tok) => tok.length >= 2 && lexicalTokenMatchesDoc(tn, tok)
+              )
             );
           });
         const hasDirectText = phraseMatched || tokenContentHit || tagHit;
@@ -574,7 +608,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const topSources = pruneSourcesByMargin(sources).slice(0, 12);
+    const topSources = orderMemorySourcesForDisplay(
+      normalizeForMatch(query),
+      pruneSourcesByMargin(sources)
+    ).slice(0, 12);
 
     let contextBlock = "";
     if (topSources.length > 0) {
