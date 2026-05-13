@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { Instrument_Serif } from "next/font/google"
@@ -12,7 +14,7 @@ const font = Instrument_Serif({
 });
 
 export default function SignupPage() {
-
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -43,21 +45,28 @@ export default function SignupPage() {
       const urlParams = new URLSearchParams(window.location.search)
       const isExtension = urlParams.get('extension') === 'true'
 
-      if (isExtension && data.session && data.user) {
-        const authData = {
-          access_token: data.session.access_token,
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0]
+      if (data.session && data.user) {
+        if (isExtension) {
+          const authData = {
+            access_token: data.session.access_token,
+            user: {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0]
+            }
           }
-        }
 
-        localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
-        window.postMessage({ type: 'MEMORY_AUTH_SUCCESS', data: authData }, '*')
-        setTimeout(() => window.close(), 150)
+          localStorage.setItem('memory_extension_auth', JSON.stringify(authData))
+          window.postMessage({ type: 'MEMORY_AUTH_SUCCESS', data: authData }, '*')
+          setTimeout(() => window.close(), 150)
+        } else {
+          toast.success("Account created successfully")
+          setTimeout(() => {
+            router.push("/dashboard")
+          }, 3000)
+        }
       } else {
-        setMessage("Check your email for the confirmation link!")
+        setMessage("Check your email for the confirmation link.")
       }
     }
     setLoading(false)
