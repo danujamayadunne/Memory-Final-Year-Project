@@ -47,6 +47,13 @@ import {
   Brain,
 } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
+import {Instrument_Serif} from "next/font/google"
+
+const instrumentSerif = Instrument_Serif({
+  weight: "400",
+  subsets: ["latin"],
+  style: "italic"
+})
 
 const data = {
   navMain: [
@@ -111,7 +118,7 @@ export function AppSidebar() {
     <Sidebar variant="inset">
       <SidebarHeader className="border-b border-sidebar-border/50">
         <div className="flex flex-col px-3">
-          <span className="font-serif text-lg font-medium tracking-tight">Memory</span>
+          <span className={`${instrumentSerif.className} text-lg font-medium tracking-tight`}>Memory</span>
           <span className="text-xs text-muted-foreground">Web Summarizer</span>
         </div>
       </SidebarHeader>

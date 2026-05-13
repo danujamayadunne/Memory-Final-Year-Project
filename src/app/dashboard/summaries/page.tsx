@@ -33,7 +33,7 @@ type Tag = {
 }
 
 export default function SummariesPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const [items, setItems] = useState<SummaryItem[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -190,35 +190,6 @@ export default function SummariesPage() {
     const matchesTag = !selectedTag || selectedTag === "all" || item.tags?.some(tag => tag.id === selectedTag)
     return matchesTag
   })
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="w-full max-w-sm space-y-6 text-center px-4">
-          <div>
-            <h1 className="text-xl font-medium">Sign in required</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in to view your summaries
-            </p>
-          </div>
-          <Button asChild className="w-full rounded-lg">
-            <Link href="/auth/login">Sign In</Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <DashboardLayout>

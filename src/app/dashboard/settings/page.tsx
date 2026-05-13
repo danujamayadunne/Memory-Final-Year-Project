@@ -26,7 +26,6 @@ import {
   EyeOff,
   Info,
 } from "lucide-react"
-import Link from "next/link"
 
 type SavedKey = {
   id: string
@@ -75,7 +74,7 @@ const PROVIDER_INFO: Record<
 }
 
 export default function SettingsPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const [keys, setKeys] = useState<SavedKey[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -200,35 +199,6 @@ export default function SettingsPage() {
 
   const activeKey = keys.find((k) => k.is_active)
   const info = PROVIDER_INFO[provider]
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="w-full max-w-sm space-y-6 text-center px-4">
-          <div>
-            <h1 className="text-xl font-medium">Sign in required</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in to manage your settings
-            </p>
-          </div>
-          <Button asChild className="w-full rounded-lg">
-            <Link href="/auth/login">Sign In</Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <DashboardLayout>

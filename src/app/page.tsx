@@ -144,13 +144,13 @@ export default function Home() {
 
           <div className="flex items-center gap-2 sm:gap-3 ml-auto">
             <Link
-              href="/auth/login"
+              href="/signin"
               className="text-sm text-[#B8B0A2] hover:text-[#F5F0E8] transition-colors px-3 py-1.5"
             >
               Log In
             </Link>
             <Link
-              href="/auth/signup"
+              href="/signup"
               className="text-sm bg-[#F5F0E8] text-[#0B1A0F] px-5 py-1.5 rounded-full font-medium hover:bg-white transition-colors"
             >
               Sign Up
@@ -183,7 +183,7 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/auth/signup"
+              href="/signup"
               className="inline-flex items-center justify-center gap-2 bg-[#F5F0E8] text-[#0B1A0F] px-8 py-3.5 rounded-full font-medium hover:bg-white transition-all hover:shadow-lg hover:shadow-[#8FB89A]/10"
             >
               Get Started Free
@@ -339,7 +339,7 @@ export default function Home() {
             Your entire research process, in one place.
           </p>
           <Link
-            href="/auth/signup"
+            href="/signup"
             className="inline-flex items-center justify-center gap-2 bg-[#F5F0E8] text-[#0B1A0F] px-10 py-4 rounded-full font-medium text-base hover:bg-white transition-all hover:shadow-lg hover:shadow-[#8FB89A]/10"
           >
             Sign Up Now

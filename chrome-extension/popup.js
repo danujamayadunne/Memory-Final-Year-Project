@@ -17,8 +17,8 @@ async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   currentTab = tab
   if (tab?.url) $('siteUrl').textContent = tab.url
-  $('loginBtn').onclick = () => { chrome.tabs.create({ url: `${API_BASE}/auth/login?extension=true` }); window.close() }
-  $('signupBtn').onclick = () => { chrome.tabs.create({ url: `${API_BASE}/auth/signup?extension=true` }); window.close() }
+  $('loginBtn').onclick = () => { chrome.tabs.create({ url: `${API_BASE}/signin?extension=true` }); window.close() }
+  $('signupBtn').onclick = () => { chrome.tabs.create({ url: `${API_BASE}/signup?extension=true` }); window.close() }
   $('addToMemoryBtn').onclick = addToMemory
   $('logoutBtn').onclick = logout
   document.querySelectorAll('.format-option').forEach(btn => {

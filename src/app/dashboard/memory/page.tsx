@@ -1,10 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useAuth } from "@/contexts/auth-context"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import {
   Send,
   User,
@@ -107,7 +105,6 @@ function formatMarkdown(text: string) {
 }
 
 export default function MyMemoryPage() {
-  const { user, loading: authLoading } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
@@ -262,40 +259,6 @@ export default function MyMemoryPage() {
     const el = e.target
     el.style.height = "auto"
     el.style.height = Math.min(el.scrollHeight, 160) + "px"
-  }
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="w-full max-w-sm space-y-6 text-center px-4">
-          <div>
-            <h1 className="text-xl font-medium">Welcome to Memory</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in to access your memory
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button asChild className="flex-1 rounded-lg">
-              <Link href="/auth/login">Sign In</Link>
-            </Button>
-            <Button asChild variant="outline" className="flex-1 rounded-lg">
-              <Link href="/auth/signup">Sign Up</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   const isEmpty = messages.length === 0

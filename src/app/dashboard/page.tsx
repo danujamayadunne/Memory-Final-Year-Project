@@ -29,7 +29,7 @@ type Tag = {
 }
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const [url, setUrl] = useState("")
   const [items, setItems] = useState<SummaryItem[]>([])
   const [tags, setTags] = useState<Tag[]>([])
@@ -152,61 +152,9 @@ export default function DashboardPage() {
     }
   }
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="w-full max-w-sm space-y-6 text-center px-4">
-          <div>
-            <h1 className="text-xl font-medium">Welcome to Memory</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in to access your dashboard
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button asChild className="flex-1 rounded-lg">
-              <Link href="/auth/login">Sign In</Link>
-            </Button>
-            <Button asChild variant="outline" className="flex-1 rounded-lg">
-              <Link href="/auth/signup">Sign Up</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <DashboardLayout>
       <div>
-
-        {/* <div className="flex items-center gap-8 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Total</span>
-            <span className="font-medium tabular-nums">{totalCount}</span>
-          </div>
-          <div className="h-4 w-px bg-border" />
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">This week</span>
-            <span className="font-medium tabular-nums">
-              {items.filter(item => {
-                const weekAgo = new Date()
-                weekAgo.setDate(weekAgo.getDate() - 7)
-                return new Date(item.created_at) > weekAgo
-              }).length}
-            </span>
-          </div>
-        </div> */}
 
         <div className="space-y-2">
           <div className="flex gap-2 items-center">

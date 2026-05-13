@@ -84,7 +84,7 @@ function truncate(s: string, max: number) {
 }
 
 export default function MapPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const [items, setItems] = useState<SummaryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [building, setBuilding] = useState(false)
@@ -476,26 +476,13 @@ export default function MapPage() {
     }
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <DashboardLayout>
         <div className="flex-1 flex items-center justify-center" style={{ minHeight: "calc(100vh - 120px)" }}>
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">Loading...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  if (!user) {
-    return (
-      <DashboardLayout>
-        <div className="flex-1 flex items-center justify-center" style={{ minHeight: "calc(100vh - 120px)" }}>
-          <div className="text-center">
-            <h1 className="text-xl font-medium">Sign in required</h1>
-            <p className="text-sm text-muted-foreground mt-1">Sign in to view the knowledge map</p>
           </div>
         </div>
       </DashboardLayout>
