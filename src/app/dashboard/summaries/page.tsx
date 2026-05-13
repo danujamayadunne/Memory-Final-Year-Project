@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { createClient } from "@/lib/supabase/client"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Search, Clock, ExternalLink, Trash2, MessageCircle, Link as LinkIcon, Tags, Loader2, Sparkles } from "lucide-react"
+import { Search, Clock, ExternalLink, Trash2, MessageCircle, Link as LinkIcon, Tags, Sparkles, Loader } from "lucide-react"
 import { ChatSheet } from "@/components/dashboard/chat-sheet"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { SummaryDialog } from "@/components/dashboard/summary-dialog"
@@ -56,18 +56,19 @@ export default function SummariesPage() {
     }
   }, [user])
 
-  const performTextSearch = (query: string, items: SummaryItem[]): SummaryItem[] => {
+  const performTextSearch = useCallback((query: string, list: SummaryItem[]): SummaryItem[] => {
     const searchLower = query.toLowerCase().trim()
-    if (!searchLower) return items
+    if (!searchLower) return list
 
-    return items.filter(item => {
+    return list.filter((item) => {
       const titleMatch = item.title?.toLowerCase().includes(searchLower) || false
-      const summaryMatch = item.summary.toLowerCase().includes(searchLower)
-      const urlMatch = item.url.toLowerCase().includes(searchLower)
-      const tagMatch = item.tags?.some(tag => tag.name.toLowerCase().includes(searchLower)) || false
+      const summaryMatch = item.summary?.toLowerCase().includes(searchLower) || false
+      const urlMatch = item.url?.toLowerCase().includes(searchLower) || false
+      const tagMatch =
+        item.tags?.some((tag) => tag.name.toLowerCase().includes(searchLower)) || false
       return titleMatch || summaryMatch || urlMatch || tagMatch
     })
-  }
+  }, [])
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -83,32 +84,44 @@ export default function SummariesPage() {
       return
     }
 
+    const controller = new AbortController()
+    const trimmed = searchTerm.trim()
     const timeoutId = setTimeout(async () => {
       setSearching(true)
       try {
         const res = await fetch("/api/ai/text/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: searchTerm.trim(), limit: 100 }),
+          body: JSON.stringify({ query: trimmed, limit: 100 }),
+          signal: controller.signal,
         })
 
         if (res.ok) {
           const data = await res.json()
-          setSearchResults(data.results || [])
+          const semantic = Array.isArray(data.results) ? data.results : []
+          // Empty semantic hits usually mean no confident match — use keyword search instead of showing a weak default.
+          setSearchResults(
+            semantic.length > 0 ? semantic : performTextSearch(trimmed, items)
+          )
         } else {
           console.error("Search failed:", await res.text())
-          setSearchResults([])
+          setSearchResults(performTextSearch(trimmed, items))
         }
-      } catch (error) {
-        console.error("Error performing vector search:", error)
-        setSearchResults([])
+      } catch (error: unknown) {
+        if ((error as { name?: string })?.name !== "AbortError") {
+          console.error("Error performing vector search:", error)
+          setSearchResults(performTextSearch(trimmed, items))
+        }
       } finally {
         setSearching(false)
       }
     }, 500)
 
-    return () => clearTimeout(timeoutId)
-  }, [searchTerm, useSemanticSearch, items])
+    return () => {
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [searchTerm, useSemanticSearch, items, performTextSearch])
 
   const loadData = async () => {
     setLoading(true)
@@ -207,7 +220,7 @@ export default function SummariesPage() {
               />
               {searching && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               )}
             </div>
@@ -262,7 +275,7 @@ export default function SummariesPage() {
           </div>
         ) : (searching && searchTerm.trim()) ? (
           <div className="rounded-lg border border-dashed py-16 text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground/60 mx-auto mb-4" />
+            <Loader className="h-5 w-5 animate-spin text-muted-foreground/60 mx-auto mb-4" />
             <p className="text-sm text-muted-foreground">
               {useSemanticSearch ? "Finding similar content..." : "Searching..."}
             </p>
@@ -270,15 +283,12 @@ export default function SummariesPage() {
         ) : filteredItems.length === 0 ? (
           <div className="rounded-lg border border-dashed py-16 px-6 text-center">
             <p className="text-muted-foreground text-sm mb-1">No summaries found</p>
-            <p className="text-muted-foreground/80 text-sm mb-4">
+            <p className="text-muted-foreground/80 text-sm">
               {searchTerm || selectedTag !== "all"
                 ? "Try adjusting your filters or search"
                 : "Add content from the dashboard to get started"
               }
             </p>
-            <Button asChild variant="outline" size="sm" className="rounded-lg">
-              <Link href="/dashboard">Go to Dashboard</Link>
-            </Button>
           </div>
         ) : (
           <div className="rounded-lg border overflow-hidden">
@@ -286,9 +296,8 @@ export default function SummariesPage() {
               <div
                 key={item.id}
                 onClick={() => { setSelectedItem(item); setShowModal(true) }}
-                className={`flex items-start gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 group ${
-                  idx < arr.length - 1 ? "border-b" : ""
-                }`}
+                className={`flex items-start gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 group ${idx < arr.length - 1 ? "border-b" : ""
+                  }`}
               >
                 <div className="flex-1 min-w-0 pt-0.5">
                   <a

@@ -24,6 +24,32 @@ function cosineSimilarity(vec1: number[], vec2: number[]): number {
     return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
 }
 
+function parseStoredEmbedding(raw: unknown, expectedLength: number): number[] | null {
+    try {
+        let parsed: number[] | null = null;
+        if (typeof raw === "string") {
+            parsed = raw
+                .replace(/[\[\]]/g, "")
+                .split(",")
+                .map((v) => Number(v.trim()))
+                .filter((n) => !Number.isNaN(n));
+        } else if (Array.isArray(raw)) {
+            parsed = raw.map(Number).filter((n) => !Number.isNaN(n));
+        } else if (raw && typeof raw === "object") {
+            parsed = Object.values(raw as Record<string, unknown>)
+                .map((v) => Number(v))
+                .filter((n) => !Number.isNaN(n));
+        }
+        if (!parsed?.length || parsed.length !== expectedLength) return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+const SIMILARITY_HIGH = 0.5;
+const SIMILARITY_RELAXED = 0.5;
+
 async function getCachedEmbedding(text: string): Promise<number[]> {
     const cached = embeddingCache.get(text);
     if (cached) return cached;
@@ -83,25 +109,12 @@ export async function POST(req: NextRequest) {
             const resultsWithScores = allSummaries
                 .map((summary: any) => {
                     if (!summary.embedding) return null;
-
-                    let summaryVector: number[];
                     try {
-                        if (typeof summary.embedding === 'string') {
-                            summaryVector = summary.embedding
-                                .replace(/[\[\]]/g, '')
-                                .split(',')
-                                .map(Number);
-                        } else if (Array.isArray(summary.embedding)) {
-                            summaryVector = summary.embedding;
-                        } else if (summary.embedding && typeof summary.embedding === 'object') {
-                            summaryVector = Object.values(summary.embedding).map(Number);
-                        } else {
-                            return null;
-                        }
-
-                        if (!summaryVector || summaryVector.length !== queryEmbedding.length) {
-                            return null;
-                        }
+                        const summaryVector = parseStoredEmbedding(
+                            summary.embedding,
+                            queryEmbedding.length
+                        );
+                        if (!summaryVector) return null;
 
                         const similarity = cosineSimilarity(queryEmbedding, summaryVector);
                         return { ...summary, similarity, embedding: undefined };
@@ -113,10 +126,15 @@ export async function POST(req: NextRequest) {
                 .filter((item): item is NonNullable<typeof item> => item !== null)
                 .sort((a, b) => b.similarity - a.similarity);
 
-            const highQualityResults = resultsWithScores.filter(item => item.similarity >= 0.5);
-            const finalResults = highQualityResults.length > 0
-                ? highQualityResults
-                : resultsWithScores.filter(item => item.similarity >= 0.35);
+            const highQualityResults = resultsWithScores.filter(
+                (item) => item.similarity >= SIMILARITY_HIGH
+            );
+            const finalResults =
+                highQualityResults.length > 0
+                    ? highQualityResults
+                    : resultsWithScores.filter(
+                        (item) => item.similarity >= SIMILARITY_RELAXED
+                    );
 
             return NextResponse.json({
                 results: finalResults
@@ -126,12 +144,16 @@ export async function POST(req: NextRequest) {
         }
 
         let filteredResults = summaries || [];
-        const highQualityResults = filteredResults.filter((item: any) => item.similarity >= 0.5);
+        const highQualityResults = filteredResults.filter(
+            (item: any) => Number(item.similarity) >= SIMILARITY_HIGH
+        );
 
         if (highQualityResults.length > 0) {
             filteredResults = highQualityResults;
         } else {
-            filteredResults = filteredResults.filter((item: any) => item.similarity >= 0.35);
+            filteredResults = filteredResults.filter(
+                (item: any) => Number(item.similarity) >= SIMILARITY_RELAXED
+            );
         }
 
         const results = filteredResults

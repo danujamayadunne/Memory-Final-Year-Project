@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Tag, Plus, X, Loader2 } from "lucide-react"
+import { Tag, Plus, X, Loader } from "lucide-react"
 
 type Tag = {
   id: string
@@ -264,7 +264,7 @@ export function SimpleTagDialog({
                 size="sm"
                 className="h-10 px-3 rounded-lg shrink-0"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {loading ? <Loader className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               </Button>
             </div>
           </div>

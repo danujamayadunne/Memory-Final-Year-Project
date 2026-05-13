@@ -7,7 +7,7 @@ import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Clock, ExternalLink, Loader2, ChevronRight } from "lucide-react"
+import { Plus, Clock, ExternalLink, Loader, ChevronRight } from "lucide-react"
 import { SimpleTagDialog } from "@/components/dashboard/simple-tag-dialog"
 import { ChatSheet } from "@/components/dashboard/chat-sheet"
 import { SummaryDialog } from "@/components/dashboard/summary-dialog"
@@ -176,7 +176,7 @@ export default function DashboardPage() {
             >
               {isAdding ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader className="h-4 w-4 animate-spin" />
                   <span className="hidden sm:inline ml-2">{addingProgress || "Adding..."}</span>
                 </>
               ) : (

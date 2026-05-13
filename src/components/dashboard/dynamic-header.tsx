@@ -21,7 +21,11 @@ const pageConfig = {
     subtitle: "Organize, explore, and learn from your saved content",
   },
   "/dashboard/settings": {
-    title: "Settings",
+    title: "Account",
+    subtitle: "Update your email and manage your account",
+  },
+  "/dashboard/settings/aimodel": {
+    title: "AI Model",
     subtitle: "Manage your AI provider and API keys",
   },
   "/dashboard/memory": {
@@ -30,9 +34,18 @@ const pageConfig = {
   },
 }
 
+function resolvePageConfig(pathname: string) {
+  if (pathname.startsWith("/dashboard/settings/aimodel")) {
+    return pageConfig["/dashboard/settings/aimodel"]
+  }
+  const direct = pageConfig[pathname as keyof typeof pageConfig]
+  if (direct) return direct
+  return pageConfig["/dashboard"]
+}
+
 export function DynamicHeader() {
   const pathname = usePathname()
-  const config = pageConfig[pathname as keyof typeof pageConfig] || pageConfig["/dashboard"]
+  const config = resolvePageConfig(pathname)
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 md:px-6">

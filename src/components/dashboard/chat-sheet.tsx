@@ -14,7 +14,7 @@ import {
   Send,
   Bot,
   User,
-  Loader2,
+  Loader,
   ExternalLink,
   Sparkles,
 } from "lucide-react"
@@ -232,7 +232,7 @@ export function ChatSheet({ summary, isOpen, onClose }: ChatSheetProps) {
                   <Bot className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/60 border border-border/40 px-4 py-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                  <Loader className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                   <span className="text-sm text-muted-foreground">Analyzing...</span>
                 </div>
               </div>
@@ -285,7 +285,7 @@ export function ChatSheet({ summary, isOpen, onClose }: ChatSheetProps) {
               className="h-11 w-11 shrink-0 rounded-lg bg-chart-1 hover:bg-chart-1/90 text-white"
             >
               {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}

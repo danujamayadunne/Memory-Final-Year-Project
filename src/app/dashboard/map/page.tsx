@@ -15,7 +15,7 @@ import {
 import { FormattedSummary } from "@/components/formatted-summary"
 import {
   Network,
-  Loader2,
+  Loader,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -507,7 +507,7 @@ export default function MapPage() {
           {building && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm">
               <div className="text-center bg-background border rounded-xl px-8 py-6 shadow-lg">
-                <Loader2 className="h-8 w-8 animate-spin text-foreground mx-auto mb-3" />
+                <Loader className="h-5 w-5 animate-spin text-foreground mx-auto mb-3" />
                 <p className="text-sm font-medium">Building knowledge graph...</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Analyzing {progress.current} of {progress.total} summaries

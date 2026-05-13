@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { ExternalLink, Image as ImageIcon, Loader2, Search, Sparkles } from "lucide-react"
+import { ExternalLink, Image as ImageIcon, Loader, Search, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import Image from "next/image"
 
@@ -172,7 +172,7 @@ export default function ImagesPage() {
               />
               {searching && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               )}
             </div>
@@ -234,7 +234,7 @@ export default function ImagesPage() {
           </div>
         ) : searching && searchTerm.trim() ? (
           <div className="rounded-lg border border-dashed py-16 text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground/60 mx-auto mb-4" />
+            <Loader className="h-5 w-5 animate-spin text-muted-foreground/60 mx-auto mb-4" />
             <p className="text-sm text-muted-foreground">
               {useSemanticSearch ? "Finding similar content..." : "Searching..."}
             </p>

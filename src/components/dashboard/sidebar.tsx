@@ -45,6 +45,7 @@ import {
   FileText,
   StickyNote,
   Brain,
+  Sparkles,
 } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import {Instrument_Serif} from "next/font/google"
@@ -93,14 +94,29 @@ const data = {
       url: "/dashboard/map",
       icon: Network,
     },
-  ],
-  navSecondary: [
     {
       title: "Settings",
-      url: "/dashboard/settings",
       icon: Settings,
+      items: [
+        {
+          title: "Account",
+          url: "/dashboard/settings",
+          icon: User,
+          exact: true,
+        },
+        {
+          title: "AI Model",
+          url: "/dashboard/settings/aimodel",
+          icon: Sparkles,
+        },
+      ],
     },
   ],
+}
+
+function isSubNavActive(activePath: string, url: string, exact?: boolean) {
+  if (exact) return activePath === url
+  return activePath === url || activePath.startsWith(`${url}/`)
 }
 
 export function AppSidebar() {
@@ -131,7 +147,9 @@ export function AppSidebar() {
             <SidebarMenu className="gap-0.5">
               {data.navMain.map((item) => {
                 if (item.items) {
-                  const isParentActive = item.items.some((sub) => activePath.startsWith(sub.url))
+                  const isParentActive = item.items.some((sub) =>
+                    isSubNavActive(activePath, sub.url, sub.exact),
+                  )
                   const derivedOpen = openSections[item.title]
                   const isOpen = typeof derivedOpen === "boolean" ? derivedOpen : isParentActive
                   return (
@@ -168,7 +186,7 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={sub.title}>
                                 <SidebarMenuSubButton
                                   asChild
-                                  isActive={activePath.startsWith(sub.url)}
+                                  isActive={isSubNavActive(activePath, sub.url, sub.exact)}
                                   className="rounded-md px-2.5 py-2"
                                 >
                                   <Link href={sub.url}>
@@ -202,25 +220,6 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 )
               })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup className="py-2">
-          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Account
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {data.navSecondary.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="rounded-lg px-3 py-2.5">
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

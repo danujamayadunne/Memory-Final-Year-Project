@@ -321,7 +321,7 @@ function pickImageSemanticTier<T extends { semanticScore: number }>(
 ): T[] {
   const high = items.filter((i) => i.semanticScore >= 0.56);
   if (high.length > 0) return high;
-  return items.filter((i) => i.semanticScore >= 0.42);
+  return items.filter((i) => i.semanticScore >= 0.5);
 }
 
 type SourceItem = {
@@ -611,8 +611,8 @@ RULES:
 9. Format responses with good structure — use paragraphs, bullet points, and headers (##) when appropriate.`;
 
     const userPrompt = `${contextBlock
-        ? `Here are relevant items from the user's saved memory:\n\n${contextBlock}\n\n---\n`
-        : "No relevant saved content was found for this query.\n\n"
+      ? `Here are relevant items from the user's saved memory:\n\n${contextBlock}\n\n---\n`
+      : "No relevant saved content was found for this query.\n\n"
       }${conversationContext}
 
 User question: ${query}`;

@@ -10,7 +10,7 @@ import {
   Plus,
   FileText,
   Trash2,
-  Loader2,
+  Loader,
   Search,
   ChevronRight,
 } from "lucide-react"
@@ -295,7 +295,7 @@ export default function NotesPage() {
           <div className="flex-1 overflow-y-auto min-h-0 rounded-lg border border-border/60">
             {loading ? (
               <div className="p-6 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <Loader className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : filteredNotes.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground">
@@ -312,9 +312,8 @@ export default function NotesPage() {
                       setContent(note.content || DEFAULT_CONTENT)
                       setTitle(note.title || "Untitled Note")
                     }}
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40 group ${
-                      selectedNote?.id === note.id ? "bg-muted/50" : ""
-                    }`}
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40 group ${selectedNote?.id === note.id ? "bg-muted/50" : ""
+                      }`}
                   >
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                     <div className="flex-1 min-w-0">
@@ -356,7 +355,7 @@ export default function NotesPage() {
                   placeholder="Note title"
                 />
                 {saving && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                  <Loader className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                 )}
               </div>
               <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-lg border border-border/60 p-5">
@@ -395,7 +394,7 @@ export default function NotesPage() {
           <div className="max-h-[55vh] overflow-y-auto">
             {loadingSummaries ? (
               <div className="p-8 flex justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : summaries.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
@@ -429,7 +428,7 @@ export default function NotesPage() {
           {importing && (
             <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-xl">
               <div className="text-center">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                <Loader className="h-6 w-6 animate-spin mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">AI is integrating...</p>
               </div>
             </div>

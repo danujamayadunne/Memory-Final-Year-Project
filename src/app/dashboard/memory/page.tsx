@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import {
   Send,
   User,
-  Loader2,
+  Loader,
   ExternalLink,
   Brain,
   FileText,
@@ -386,7 +386,7 @@ export default function MyMemoryPage() {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/60 border border-border/40 px-4 py-3">
-                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                              <Loader className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                               <span className="text-sm text-muted-foreground">
                                 Searching your memory...
                               </span>
@@ -441,7 +441,7 @@ export default function MyMemoryPage() {
                     className="h-10 w-10 shrink-0 rounded-xl bg-chart-1 hover:bg-chart-1/90 text-white"
                   >
                     {isStreaming ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader className="h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
