@@ -3,6 +3,9 @@
   "name": "Memory - Web Summarizer",
   "version": "1.0.0",
   "description": "Quickly add web pages to your Memory knowledge base",
+  "icons": {
+    "128": "icons/icon.png"
+  },
   "permissions": [
     "activeTab",
     "storage",
@@ -18,10 +21,7 @@
     "default_popup": "popup.html",
     "default_title": "Add to Memory",
     "default_icon": {
-      "16": "icons/icon16.svg",
-      "32": "icons/icon32.svg",
-      "48": "icons/icon48.svg",
-      "128": "icons/icon128.svg"
+      "128": "icons/icon.png"
     }
   },
   "background": {
