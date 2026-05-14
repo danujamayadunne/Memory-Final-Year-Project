@@ -5,16 +5,16 @@ A personal knowledge base for saving web content, notes, and images, with semant
 ## Features
 
 - **Browser extension** — Chrome extension in `chrome-extension/` to send the current tab to Memory.
-- **Summaries** — Paste a URL; content is fetched and summarized (papers, articles, blogs).
+- **Summaries** — Paste a URL and get summarize (papers, articles, blogs).
 - **Semantic search** — Find items by meaning across your library.
-- **Notes** — Rich editor with optional AI help; link notes to saved material.
+- **Notes** — Rich editor with AI help.
 - **Knowledge map** — Graph view of how topics and items connect.
 - **Images** — Store images and search by description.
 - **Chat** — Ask questions with answers tied to your saved sources.
 
 ## Tech stack
 
-- **App** — [Next.js](https://nextjs.org) (App Router), React, TypeScript
+- **App** — [Next.js](https://nextjs.org), React, TypeScript
 - **UI** — Tailwind CSS
 - **Data & auth** — [Supabase](https://supabase.com/)
 - **AI** — Google Gemini, OpenAI, and Anthropic
@@ -63,7 +63,7 @@ A personal knowledge base for saving web content, notes, and images, with semant
 
 ## Scripts
 
-- `npm run dev` — Development server  
-- `npm run build` / `npm start` — Production build and server  
-- `npm run lint` — ESLint  
-- `npm test` — Vitest  
+- `npm run dev` — Development server
+- `npm run build` / `npm start` — Production build and server
+- `npm run lint` — ESLint
+- `npm test` — Vitest
