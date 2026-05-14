@@ -377,7 +377,7 @@ export default function Home() {
               <Button
                 size="sm"
                 asChild
-                className="rounded-full border-0 bg-[#E0FF32] text-black shadow-none hover:opacity-90 hover:text-black"
+                className="rounded-full border-0 bg-[#E0FF32] hover:bg-[#E0FF32]/80 text-black shadow-none tracking-tight  hover:text-black"
               >
                 <Link href="/dashboard">Dashboard</Link>
               </Button>

@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Memory
 
-## Getting Started
+A personal knowledge base for saving web content, notes, and images, with semantic search and AI chat grounded in what you store.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Summaries** — Paste a URL; content is fetched and summarized (papers, articles, blogs).
+- **Semantic search** — Find items by meaning across your library.
+- **Notes** — Rich editor with optional AI help; link notes to saved material.
+- **Knowledge map** — Graph view of how topics and items connect.
+- **Images** — Store images and search by description.
+- **Chat** — Ask questions with answers tied to your saved sources.
+- **Browser extension** — Optional Chrome extension in `chrome-extension/` to send the current tab to Memory.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **App** — [Next.js](https://nextjs.org) (App Router), React, TypeScript
+- **UI** — Tailwind CSS
+- **Data & auth** — [Supabase](https://supabase.com/)
+- **AI** — Google Gemini, OpenAI, and Anthropic
+- **Other** — TipTap (notes), embeddings/search, [Firecrawl](https://firecrawl.dev/) for URL extraction where used
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Install
 
-## Learn More
+1. Clone the repo and install dependencies:
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   npm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. Create `.env.local` in the project root with at least:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   | Variable | Purpose |
+   |----------|---------|
+   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) key |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
+   | `GOOGLE_GENERATIVE_AI_API_KEY` or `GOOGLE_GEMINI_API_KEY` | Default AI provider when the user has not set their own |
+   | `FIRECRAWL_API_KEY` | Fetching and extracting content from URLs |
+   | `ENCRYPTION_SECRET` | Optional; encrypts stored user API keys (falls back to anon key if unset) |
 
-## Deploy on Vercel
+3. Run the dev server:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   Open [http://localhost:3000](http://localhost:3000).
+
+4. Production build:
+
+   ```bash
+   npm run build
+   npm start
+   ```
+
+## How to use
+
+1. **Sign up / sign in** at `/signup` or `/signin` (Supabase auth).
+2. **Dashboard** — After login, use the sidebar for Summaries, Memory (search), Notes, Map, Images, and Settings.
+3. **Save content** — Add a URL from the app UI, or install the Chrome extension and use it while browsing (load `chrome-extension` as an unpacked extension in Chrome).
+4. **AI providers** — In **Settings → AI model**, add your own API keys if you want to use OpenAI, Anthropic, Gemini, or a custom base URL instead of the server default.
+
+## Scripts
+
+- `npm run dev` — Development server  
+- `npm run build` / `npm start` — Production build and server  
+- `npm run lint` — ESLint  
+- `npm test` — Vitest  

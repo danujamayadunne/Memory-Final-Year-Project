@@ -242,7 +242,7 @@ function summaryPassesLexicalGate(
   const significant = contentTokens.filter((t) => t.length >= 4);
   const required = significant.length > 0 ? significant : contentTokens;
   if (required.some((t) => lexicalTokenMatchesDoc(docNorm, t))) return true;
-  return semanticScore >= 0.58;
+  return semanticScore >= 0.63;
 }
 
 function queryLikelyAboutImages(normalizedQuery: string): boolean {
@@ -273,10 +273,10 @@ function pruneSourcesByMargin(sources: SourceItem[]): SourceItem[] {
     return [...links, ...other].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
   }
   const best = Math.max(...links.map((g) => g.similarity || 0));
-  if (best < 0.32) {
-    return [...links, ...other].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+  if (best < 0.42) {
+    return [...other].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
   }
-  const floor = Math.max(0.36, best - 0.11);
+  const floor = Math.max(0.38, best - 0.1);
   const keptLinks = links.filter((g) => (g.similarity || 0) >= floor);
   return [...keptLinks, ...other].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
 }
@@ -346,9 +346,9 @@ function parseEmbedding(raw: unknown): number[] | null {
 function pickBySemanticTier<T extends { semanticScore: number }>(
   items: T[]
 ): T[] {
-  const high = items.filter((i) => i.semanticScore >= 0.5);
+  const high = items.filter((i) => i.semanticScore >= 0.56);
   if (high.length > 0) return high;
-  return items.filter((i) => i.semanticScore >= 0.35);
+  return items.filter((i) => i.semanticScore >= 0.5);
 }
 
 function pickImageSemanticTier<T extends { semanticScore: number }>(
@@ -368,6 +368,44 @@ type SourceItem = {
   snippet: string;
   similarity?: number;
 };
+
+type ScoredMemorySource = SourceItem & { lexical: boolean };
+
+function stripSourceForClient(s: ScoredMemorySource): Omit<SourceItem, "similarity"> {
+  const { similarity: _sim, lexical: _lex, ...rest } = s;
+  void _sim;
+  void _lex;
+  return rest;
+}
+
+function filterMisleadingSemanticSources(sources: ScoredMemorySource[]): ScoredMemorySource[] {
+  if (sources.length === 0) return [];
+  const summaries = sources.filter((s) => s.type === "summary");
+  const lexicalSummaries = summaries.filter((s) => s.lexical);
+  const hasLexicalSummary = lexicalSummaries.length > 0;
+  const hasLexicalElsewhere = sources.some((s) => s.type !== "summary" && s.lexical);
+
+  if (!hasLexicalSummary) {
+    if (!hasLexicalElsewhere) return sources;
+    return sources.filter((s) => {
+      if (s.type !== "summary") return true;
+      if (s.lexical) return true;
+      return (s.similarity || 0) >= 0.63;
+    });
+  }
+
+  const bestLexicalSummarySim = Math.max(
+    0,
+    ...lexicalSummaries.map((s) => s.similarity || 0)
+  );
+
+  return sources.filter((s) => {
+    if (s.type !== "summary") return true;
+    if (s.lexical) return true;
+    const sim = s.similarity || 0;
+    return sim >= Math.max(0.62, bestLexicalSummarySim - 0.02);
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -406,35 +444,35 @@ export async function POST(req: NextRequest) {
       console.warn("Could not generate embedding for query:", e);
     }
 
-    const sources: SourceItem[] = [];
+    const sources: ScoredMemorySource[] = [];
 
     const summariesPromise = queryEmbedding
       ? supabase
-          .from("web_summaries")
-          .select("id, url, summary, title, tags, embedding")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(150)
+        .from("web_summaries")
+        .select("id, url, summary, title, tags, embedding")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(150)
       : supabase
-          .from("web_summaries")
-          .select("id, url, summary, title, tags")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(150);
+        .from("web_summaries")
+        .select("id, url, summary, title, tags")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(150);
 
     const imagesPromise = queryEmbedding
       ? supabase
-          .from("image_memories")
-          .select("id, image_url, source_url, description, tags, embedding, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(150)
+        .from("image_memories")
+        .select("id, image_url, source_url, description, tags, embedding, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(150)
       : supabase
-          .from("image_memories")
-          .select("id, image_url, source_url, description, tags, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(150);
+        .from("image_memories")
+        .select("id, image_url, source_url, description, tags, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(150);
 
     const [summariesResult, notesResult, imagesResult] = await Promise.all([
       summariesPromise,
@@ -471,6 +509,10 @@ export async function POST(req: NextRequest) {
           contentTokens.length > 0 ? (wordMatchCount / contentTokens.length) * 0.32 : 0;
         const keywordScore = Math.max(phraseHit, wordScore);
         const hasKeywordHit = keywordScore > 0.14;
+        const anyQueryTokenInDoc =
+          contentTokens.length > 0 &&
+          contentTokens.some((w) => lexicalTokenMatchesDoc(docNorm, w));
+        const lexicalForTier = phraseMatched || hasKeywordHit || anyQueryTokenInDoc;
 
         let semanticScore = 0;
         if (queryEmbedding && s.embedding) {
@@ -487,6 +529,7 @@ export async function POST(req: NextRequest) {
           keywordScore,
           semanticScore,
           hasKeywordHit,
+          lexicalForTier,
         };
       });
 
@@ -494,14 +537,16 @@ export async function POST(req: NextRequest) {
         summaryPassesLexicalGate(s.docNorm, s.phraseMatched, s.semanticScore, contentTokens)
       );
 
-      const withKeyword = gated.filter((s) => s.hasKeywordHit);
-      const semanticOnly = gated.filter((s) => !s.hasKeywordHit && s.semanticScore > 0);
+      const withKeyword = gated.filter((s) => s.lexicalForTier);
+      const semanticOnly = gated.filter((s) => !s.lexicalForTier && s.semanticScore > 0);
       const pickedSemantic = pickBySemanticTier(semanticOnly);
 
       const merged = [...withKeyword, ...pickedSemantic]
         .map((s) => ({
           ...s,
-          score: s.hasKeywordHit ? Math.max(s.keywordScore, s.semanticScore) : s.semanticScore,
+          score: s.lexicalForTier
+            ? Math.max(s.keywordScore, s.semanticScore)
+            : s.semanticScore,
         }))
         .sort((a, b) => b.score - a.score)
         .slice(0, 8);
@@ -514,6 +559,7 @@ export async function POST(req: NextRequest) {
           url: s.url,
           snippet: (s.summary || "").slice(0, 500),
           similarity: s.score,
+          lexical: s.lexicalForTier,
         });
       }
     }
@@ -548,6 +594,7 @@ export async function POST(req: NextRequest) {
           title: n.title || "Untitled Note",
           snippet: n.noteText.slice(0, 500),
           similarity: n.score,
+          lexical: n.phraseMatched || n.score >= 0.18,
         });
       }
     }
@@ -649,14 +696,24 @@ export async function POST(req: NextRequest) {
           imageUrl: img.image_url,
           snippet: img.description || "No description",
           similarity: img.score,
+          lexical: listAllSavedImages || img.hasDirectText,
         });
       }
     }
 
-    const topSources = orderMemorySourcesForDisplay(
-      normalizeForMatch(query),
-      pruneSourcesByMargin(sources)
+    const rankedSources = filterMisleadingSemanticSources(
+      orderMemorySourcesForDisplay(
+        normalizeForMatch(query),
+        pruneSourcesByMargin(sources)
+      ) as ScoredMemorySource[]
     ).slice(0, 12);
+
+    const bestRanked = rankedSources.length
+      ? Math.max(...rankedSources.map((s) => s.similarity || 0))
+      : 0;
+    const anyLexical = rankedSources.some((s) => s.lexical);
+    const topSources: ScoredMemorySource[] =
+      !anyLexical && bestRanked < 0.53 ? [] : rankedSources;
 
     let contextBlock = "";
     if (topSources.length > 0) {
@@ -699,10 +756,7 @@ RULES:
 
 User question: ${query}`;
 
-    const sourcesPayload = topSources.map(({ similarity, ...rest }) => {
-      void similarity;
-      return rest;
-    });
+    const sourcesPayload = topSources.map((s) => stripSourceForClient(s));
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
