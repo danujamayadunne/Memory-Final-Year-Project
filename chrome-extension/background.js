@@ -3,17 +3,41 @@ importScripts('config.js')
 const API_BASE = MEMORY_API_BASE
 const STORAGE_KEYS = MEMORY_STORAGE_KEYS
 
-function showToast(message, color) {
-  return function () {
-    const el = document.getElementById('memory-toast')
-    if (el) el.remove()
-    const toast = document.createElement('div')
-    toast.id = 'memory-toast'
-    toast.style.cssText = `position:fixed;top:20px;right:20px;background:${color};color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:500;z-index:999999;box-shadow:0 8px 24px rgba(0,0,0,0.15);-webkit-font-smoothing:antialiased`
-    toast.textContent = message
-    document.body.appendChild(toast)
-    setTimeout(() => toast.remove(), 3500)
-  }
+const SUMMARIZE_TIMEOUT_MS = 90000
+const IMAGE_TIMEOUT_MS = 60000
+const AUTH_VERIFY_TIMEOUT_MS = 8000
+
+function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer))
+}
+
+function fallbackToastViaScripting(tabId, message, color) {
+  chrome.scripting.executeScript({
+    target: { tabId },
+    func: (msg, c) => {
+      const existing = document.getElementById('memory-toast')
+      if (existing) existing.remove()
+      const toast = document.createElement('div')
+      toast.id = 'memory-toast'
+      toast.style.cssText = `position:fixed;top:20px;right:20px;background:${c};color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:500;z-index:2147483647;box-shadow:0 8px 24px rgba(0,0,0,0.15);-webkit-font-smoothing:antialiased`
+      toast.textContent = msg
+      document.body.appendChild(toast)
+      setTimeout(() => toast.remove(), 3500)
+    },
+    args: [message, color || '#000']
+  }).catch(() => {})
+}
+
+function toast(tabId, message, color = '#000') {
+  if (typeof tabId !== 'number') return
+  chrome.tabs.sendMessage(tabId, { type: 'MEMORY_TOAST', message, color }, () => {
+    if (chrome.runtime.lastError) {
+      fallbackToastViaScripting(tabId, message, color)
+    }
+  })
 }
 
 function createContextMenu() {
@@ -35,54 +59,61 @@ function handleAuthSuccess(data) {
   chrome.runtime.sendMessage({ type: 'AUTH_SUCCESS', data }).catch(() => {})
 }
 
+async function getToken() {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.ACCESS_TOKEN)
+  return result[STORAGE_KEYS.ACCESS_TOKEN]
+}
+
 async function addPageToMemory(tab) {
-  const { [STORAGE_KEYS.ACCESS_TOKEN]: token } = await chrome.storage.local.get(STORAGE_KEYS.ACCESS_TOKEN)
+  const token = await getToken()
   if (!token) {
-    chrome.scripting.executeScript({ target: { tabId: tab.id }, func: showToast, args: ['Sign in first', '#000'] }).catch(() => {})
+    toast(tab.id, 'Sign in first')
     return
   }
   chrome.action.setBadgeText({ text: '...', tabId: tab.id })
   chrome.action.setBadgeBackgroundColor({ color: '#000', tabId: tab.id })
-  chrome.scripting.executeScript({ target: { tabId: tab.id }, func: showToast, args: ['Adding...', '#000'] }).catch(() => {})
+  toast(tab.id, 'Adding...')
   try {
-    const res = await fetch(`${API_BASE}/api/ai/text`, {
+    const res = await fetchWithTimeout(`${API_BASE}/api/ai/text`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: tab.url, format: 'bullets' })
-    })
+    }, SUMMARIZE_TIMEOUT_MS)
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed')
-    await chrome.storage.local.set({ [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now() })
+    chrome.storage.local.set({ [STORAGE_KEYS.AUTH_TIMESTAMP]: Date.now() })
     chrome.action.setBadgeText({ text: '✓', tabId: tab.id })
     chrome.action.setBadgeBackgroundColor({ color: '#000', tabId: tab.id })
-    chrome.scripting.executeScript({ target: { tabId: tab.id }, func: showToast, args: ['Added to Memory', '#000'] }).catch(() => {})
+    toast(tab.id, 'Added to Memory')
     setTimeout(() => chrome.action.setBadgeText({ text: '', tabId: tab.id }), 2500)
   } catch (err) {
     chrome.action.setBadgeText({ text: '!', tabId: tab.id })
     chrome.action.setBadgeBackgroundColor({ color: '#000', tabId: tab.id })
-    chrome.scripting.executeScript({ target: { tabId: tab.id }, func: showToast, args: [err.message || 'Failed', '#000'] }).catch(() => {})
+    const msg = err?.name === 'AbortError' ? 'Timed out' : (err?.message || 'Failed')
+    toast(tab.id, msg)
     setTimeout(() => chrome.action.setBadgeText({ text: '', tabId: tab.id }), 2500)
   }
 }
 
 async function saveImageToMemory(imageUrl, pageUrl, tabId) {
-  const { [STORAGE_KEYS.ACCESS_TOKEN]: token } = await chrome.storage.local.get(STORAGE_KEYS.ACCESS_TOKEN)
+  const token = await getToken()
   if (!token) {
-    chrome.scripting.executeScript({ target: { tabId }, func: showToast, args: ['Sign in first', '#000'] }).catch(() => {})
+    toast(tabId, 'Sign in first')
     return
   }
-    chrome.scripting.executeScript({ target: { tabId }, func: showToast, args: ['Saving image...', '#000'] }).catch(() => {})
+  toast(tabId, 'Saving image...')
   try {
-    const res = await fetch(`${API_BASE}/api/ai/images`, {
+    const res = await fetchWithTimeout(`${API_BASE}/api/ai/images`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageUrl, sourceUrl: pageUrl || null })
-    })
+    }, IMAGE_TIMEOUT_MS)
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed')
-    chrome.scripting.executeScript({ target: { tabId }, func: showToast, args: ['Image saved', '#000'] }).catch(() => {})
+    toast(tabId, 'Image saved')
   } catch (err) {
-    chrome.scripting.executeScript({ target: { tabId }, func: showToast, args: [err.message || 'Failed', '#000'] }).catch(() => {})
+    const msg = err?.name === 'AbortError' ? 'Timed out' : (err?.message || 'Failed')
+    toast(tabId, msg)
   }
 }
 
@@ -103,7 +134,7 @@ async function readAuthFromTab(tabId) {
 }
 
 async function updateBadge() {
-  const { [STORAGE_KEYS.ACCESS_TOKEN]: token } = await chrome.storage.local.get(STORAGE_KEYS.ACCESS_TOKEN)
+  const token = await getToken()
   chrome.action.setBadgeText({ text: token ? 'M' : '' })
   if (token) chrome.action.setBadgeBackgroundColor({ color: '#000' })
 }
@@ -140,7 +171,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab?.url) {
     updateBadge()
-    if (/\/auth\/(login|signup|callback)/.test(tab.url)) readAuthFromTab(tabId)
+    if (/\/auth\/(login|signup|callback)|\/signin|\/signup/.test(tab.url)) {
+      readAuthFromTab(tabId)
+    }
   }
 })
 

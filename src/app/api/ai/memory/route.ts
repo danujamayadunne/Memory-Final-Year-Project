@@ -309,11 +309,7 @@ function extractTextFromTiptap(content: any): string {
 }
 
 async function getCachedEmbedding(text: string): Promise<number[]> {
-  const cached = embeddingCache.get(text);
-  if (cached) return cached;
-  const embedding = await generateEmbedding(text);
-  embeddingCache.set(text, embedding);
-  return embedding;
+  return embeddingCache.getOrCompute(text, generateEmbedding);
 }
 
 function parseEmbedding(raw: any): number[] | null {
@@ -403,22 +399,32 @@ export async function POST(req: NextRequest) {
 
     const sources: SourceItem[] = [];
 
+    const summaryColumns = queryEmbedding
+      ? "id, url, summary, title, tags, embedding"
+      : "id, url, summary, title, tags";
+    const imageColumns = queryEmbedding
+      ? "id, image_url, source_url, description, tags, embedding, created_at"
+      : "id, image_url, source_url, description, tags, created_at";
+
     const [summariesResult, notesResult, imagesResult] = await Promise.all([
       supabase
         .from("web_summaries")
-        .select("id, url, summary, title, tags, embedding")
+        .select(summaryColumns as any)
         .eq("user_id", user.id)
-        .limit(200),
+        .order("created_at", { ascending: false })
+        .limit(150) as unknown as Promise<{ data: any[] | null; error: any }>,
       supabase
         .from("notes")
         .select("id, title, content")
         .eq("user_id", user.id)
-        .limit(100),
+        .order("updated_at", { ascending: false })
+        .limit(80),
       supabase
         .from("image_memories")
-        .select("id, image_url, source_url, description, tags, embedding, created_at")
+        .select(imageColumns as any)
         .eq("user_id", user.id)
-        .limit(200),
+        .order("created_at", { ascending: false })
+        .limit(150) as unknown as Promise<{ data: any[] | null; error: any }>,
     ]);
 
     if (summariesResult.data) {

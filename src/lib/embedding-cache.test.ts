@@ -24,7 +24,7 @@ describe("embeddingCache", () => {
     const embedding = [0.4, 0.5, 0.6];
 
     embeddingCache.set("memory query", embedding);
-    vi.advanceTimersByTime(60 * 60 * 1000 + 1);
+    vi.advanceTimersByTime(6 * 60 * 60 * 1000 + 1);
 
     expect(embeddingCache.get("memory query")).toBeNull();
   });

@@ -2,54 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { generateEmbedding } from "@/lib/ai/provider";
+import { embeddingCache } from "@/lib/embedding-cache";
 
-const embeddingCache = new Map<string, number[]>();
 const similarityCache = new Map<string, number>();
+const SIMILARITY_CACHE_LIMIT = 1000;
 
 function getCacheKey(text1: string, text2: string): string {
   const [first, second] = [text1, text2].sort();
   return `${first}|||${second}`;
 }
 
-function getTextHash(text: string): string {
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString();
-}
-
-async function getCachedEmbedding(text: string): Promise<number[]> {
-  const textHash = getTextHash(text);
-  if (embeddingCache.has(textHash)) {
-    return embeddingCache.get(textHash)!;
-  }
-
-  const embedding = await generateEmbedding(text);
-  embeddingCache.set(textHash, embedding);
-  return embedding;
-}
-
 function cosineSimilarity(vec1: number[], vec2: number[]): number {
   if (vec1.length !== vec2.length) {
     throw new Error("Vectors must have the same length");
   }
-
   let dotProduct = 0;
   let magnitude1 = 0;
   let magnitude2 = 0;
-
   for (let i = 0; i < vec1.length; i++) {
     dotProduct += vec1[i] * vec2[i];
     magnitude1 += vec1[i] * vec1[i];
     magnitude2 += vec2[i] * vec2[i];
   }
-
   if (magnitude1 === 0 || magnitude2 === 0) return 0;
-
   return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
+}
+
+function rememberSimilarity(key: string, value: number) {
+  if (similarityCache.size >= SIMILARITY_CACHE_LIMIT) {
+    const firstKey = similarityCache.keys().next().value;
+    if (firstKey) similarityCache.delete(firstKey);
+  }
+  similarityCache.set(key, value);
 }
 
 export async function PUT(req: NextRequest) {
@@ -72,21 +56,18 @@ export async function PUT(req: NextRequest) {
     }
 
     const similarityKey = getCacheKey(text1, text2);
-    if (similarityCache.has(similarityKey)) {
-      return NextResponse.json({
-        similarity: similarityCache.get(similarityKey)!,
-        cached: true
-      });
+    const cachedScore = similarityCache.get(similarityKey);
+    if (cachedScore !== undefined) {
+      return NextResponse.json({ similarity: cachedScore, cached: true });
     }
 
     const [embedding1, embedding2] = await Promise.all([
-      getCachedEmbedding(text1),
-      getCachedEmbedding(text2),
+      embeddingCache.getOrCompute(text1, generateEmbedding),
+      embeddingCache.getOrCompute(text2, generateEmbedding),
     ]);
 
     const similarity = cosineSimilarity(embedding1, embedding2);
-
-    similarityCache.set(similarityKey, similarity);
+    rememberSimilarity(similarityKey, similarity);
 
     return NextResponse.json({ similarity, cached: false });
   } catch (error: any) {

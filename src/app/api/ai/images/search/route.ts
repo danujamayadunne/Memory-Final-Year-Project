@@ -5,50 +5,49 @@ import { embeddingCache } from "@/lib/embedding-cache";
 import { generateEmbedding } from "@/lib/ai/provider";
 
 const COLOR_KEYWORDS = [
-  "red",
-  "green",
-  "blue",
-  "yellow",
-  "orange",
-  "purple",
-  "pink",
-  "brown",
-  "black",
-  "white",
-  "gray",
-  "grey",
-  "cyan",
-  "magenta",
-  "teal",
+  "red", "green", "blue", "yellow", "orange", "purple",
+  "pink", "brown", "black", "white", "gray", "grey",
+  "cyan", "magenta", "teal",
 ];
 
-function cosineSimilarity(vec1: number[], vec2: number[]): number {
-  if (vec1.length !== vec2.length) {
-    throw new Error("Vectors must have the same length");
-  }
+const SIMILARITY_STRICT = 0.65;
+const SIMILARITY_RELAXED = 0.5;
 
+function cosineSimilarity(vec1: number[], vec2: number[]): number {
+  if (vec1.length !== vec2.length) return 0;
   let dotProduct = 0;
   let magnitude1 = 0;
   let magnitude2 = 0;
-
   for (let i = 0; i < vec1.length; i++) {
     dotProduct += vec1[i] * vec2[i];
     magnitude1 += vec1[i] * vec1[i];
     magnitude2 += vec2[i] * vec2[i];
   }
-
   if (magnitude1 === 0 || magnitude2 === 0) return 0;
-
   return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
 }
 
-async function getCachedEmbedding(text: string): Promise<number[]> {
-  const cached = embeddingCache.get(text);
-  if (cached) return cached;
-
-  const embedding = await generateEmbedding(text);
-  embeddingCache.set(text, embedding);
-  return embedding;
+function parseStoredEmbedding(raw: unknown, expectedLength: number): number[] | null {
+  try {
+    let parsed: number[] | null = null;
+    if (typeof raw === "string") {
+      parsed = raw
+        .replace(/[\[\]]/g, "")
+        .split(",")
+        .map((v) => Number(v.trim()))
+        .filter((n) => !Number.isNaN(n));
+    } else if (Array.isArray(raw)) {
+      parsed = raw.map(Number).filter((n) => !Number.isNaN(n));
+    } else if (raw && typeof raw === "object") {
+      parsed = Object.values(raw as Record<string, unknown>)
+        .map((v) => Number(v))
+        .filter((n) => !Number.isNaN(n));
+    }
+    if (!parsed?.length || parsed.length !== expectedLength) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -96,21 +95,8 @@ export async function POST(req: NextRequest) {
     const queryColors = COLOR_KEYWORDS.filter((color) =>
       queryLower.includes(color)
     );
-    const queryEmbedding = await getCachedEmbedding(trimmedQuery);
 
-    const { data: rows, error } = await supabase
-      .from("image_memories")
-      .select("id, image_url, source_url, description, tags, created_at, embedding")
-      .eq("user_id", user.id)
-      .not("embedding", "is", null);
-
-    if (error) {
-      throw error;
-    }
-
-    if (!rows || rows.length === 0) {
-      return NextResponse.json({ results: [] });
-    }
+    const directLookupColumns = "id, image_url, source_url, description, tags, created_at";
 
     const matchesColorRequirement = (item: any) => {
       if (queryColors.length === 0) return true;
@@ -125,68 +111,63 @@ export async function POST(req: NextRequest) {
       );
     };
 
-    const directMatches = rows.filter((row) => {
-      const description = row.description?.toLowerCase() || "";
-      const tags = Array.isArray(row.tags)
-        ? row.tags.some((tag: string) => tag.toLowerCase().includes(queryLower))
-        : false;
-      return (
-        (description.includes(queryLower) || tags) &&
-        matchesColorRequirement(row)
-      );
-    });
+    const { data: directHits, error: directError } = await supabase
+      .from("image_memories")
+      .select(directLookupColumns)
+      .eq("user_id", user.id)
+      .ilike("description", `%${queryLower}%`)
+      .limit(limit);
 
-    if (directMatches.length > 0) {
-      const unique = directMatches
-        .slice(0, limit)
-        .map(({ embedding, ...rest }) => rest);
-      return NextResponse.json({ results: unique });
+    if (directError) throw directError;
+
+    if (directHits && directHits.length > 0) {
+      const filtered = directHits.filter(matchesColorRequirement);
+      if (filtered.length > 0) {
+        return NextResponse.json({ results: filtered });
+      }
+    }
+
+    const queryEmbedding = await embeddingCache.getOrCompute(
+      trimmedQuery,
+      generateEmbedding
+    );
+
+    const { data: rows, error } = await supabase
+      .from("image_memories")
+      .select(`${directLookupColumns}, embedding`)
+      .eq("user_id", user.id)
+      .not("embedding", "is", null);
+
+    if (error) throw error;
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({ results: [] });
     }
 
     const ranked = rows
       .map((row: any) => {
-        try {
-          let storedVector: number[] | null = null;
-          if (typeof row.embedding === "string") {
-            storedVector = row.embedding
-              .replace(/[\[\]]/g, "")
-              .split(",")
-              .map((value: string) => Number(value.trim()))
-              .filter((value: number) => !Number.isNaN(value));
-          } else if (Array.isArray(row.embedding)) {
-            storedVector = row.embedding.map(Number);
-          } else if (row.embedding && typeof row.embedding === "object") {
-            storedVector = Object.values(row.embedding).map((value: any) => Number(value));
-          }
-
-          if (!storedVector || storedVector.length !== queryEmbedding.length) {
-            return null;
-          }
-
-          const similarity = cosineSimilarity(queryEmbedding, storedVector);
-          return {
-            ...row,
-            similarity,
-          };
-        } catch (err) {
-          console.error("Failed to process embedding for image memory", err);
-          return null;
-        }
+        const vec = parseStoredEmbedding(row.embedding, queryEmbedding.length);
+        if (!vec) return null;
+        const similarity = cosineSimilarity(queryEmbedding, vec);
+        const { embedding: _, ...rest } = row;
+        return { ...rest, similarity };
       })
-      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .filter((item: any): item is { similarity: number } & Record<string, unknown> =>
+        item !== null
+      )
       .filter(matchesColorRequirement)
-      .sort((a, b) => b.similarity - a.similarity);
+      .sort((a: any, b: any) => b.similarity - a.similarity);
 
-    const strictMatches = ranked.filter((item) => item.similarity >= 0.65);
-    const relaxedMatches = ranked.filter((item) => item.similarity >= 0.5);
-
+    const strict = ranked.filter((item: any) => item.similarity >= SIMILARITY_STRICT);
     const thresholded =
-      strictMatches.length > 0 ? strictMatches : relaxedMatches;
+      strict.length > 0
+        ? strict
+        : ranked.filter((item: any) => item.similarity >= SIMILARITY_RELAXED);
 
-    const limited = thresholded.slice(0, limit);
-    return NextResponse.json({
-      results: limited.map(({ embedding, similarity, ...rest }) => rest),
-    });
+    const limited = thresholded
+      .slice(0, limit)
+      .map(({ similarity: _s, ...rest }: any) => rest);
+
+    return NextResponse.json({ results: limited });
   } catch (error: any) {
     console.error("Error performing image semantic search:", error);
     return NextResponse.json(

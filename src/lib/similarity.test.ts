@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  __clearSimilarityCacheForTesting,
   calculateRelevanceScore,
   findRelatedSummaries,
   type SummaryItemForSimilarity,
@@ -31,12 +32,20 @@ const unrelated: SummaryItemForSimilarity = {
 
 describe("similarity", () => {
   beforeEach(() => {
+    __clearSimilarityCacheForTesting();
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ similarity: 0.8 }),
-      })),
+      vi.fn(async (_input, init) => {
+        const body = JSON.parse(String(init?.body)) as {
+          text: string;
+          candidates: string[];
+        };
+        const similarities = body.candidates.map(() => 0.8);
+        return {
+          ok: true,
+          json: async () => ({ similarities }),
+        };
+      }),
     );
   });
 
@@ -67,15 +76,15 @@ describe("similarity", () => {
       "fetch",
       vi.fn(async (_input, init) => {
         const body = JSON.parse(String(init?.body)) as {
-          text1: string;
-          text2: string;
+          text: string;
+          candidates: string[];
         };
-
-        const similarity = body.text2.includes("machine learning") ? 0.9 : 0.1;
-
+        const similarities = body.candidates.map((c) =>
+          c.includes("machine learning") ? 0.9 : 0.1,
+        );
         return {
           ok: true,
-          json: async () => ({ similarity }),
+          json: async () => ({ similarities }),
         };
       }),
     );
@@ -85,5 +94,17 @@ describe("similarity", () => {
     expect(results).toHaveLength(1);
     expect(results[0]?.item.id).toBe("related");
     expect(results[0]?.score).toBeGreaterThanOrEqual(0.25);
+  });
+
+  it("makes a single batched request for findRelatedSummaries", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ similarities: [0.9, 0.1] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await findRelatedSummaries(selected, [related, unrelated], 5, 0);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
