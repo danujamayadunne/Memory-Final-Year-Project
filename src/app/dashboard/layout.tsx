@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { Loader } from "lucide-react"
 
 function signInUrlWithRedirect(pathname: string | null): string {
   if (
@@ -35,10 +36,7 @@ export default function DashboardRouteLayout({
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
+        <Loader className="h-9 w-9 animate-spin" />
       </div>
     )
   }

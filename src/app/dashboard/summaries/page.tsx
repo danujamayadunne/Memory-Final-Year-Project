@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { SummaryDialog } from "@/components/dashboard/summary-dialog"
 import { findRelatedSummariesWithAI, type RelatedSummaryWithScore } from "@/lib/similarity"
 import { SimpleTagDialog } from "@/components/dashboard/simple-tag-dialog"
-import Link from "next/link"
 
 type SummaryItem = {
   id: string
@@ -99,7 +98,6 @@ export default function SummariesPage() {
         if (res.ok) {
           const data = await res.json()
           const semantic = Array.isArray(data.results) ? data.results : []
-          // Empty semantic hits usually mean no confident match — use keyword search instead of showing a weak default.
           setSearchResults(
             semantic.length > 0 ? semantic : performTextSearch(trimmed, items)
           )

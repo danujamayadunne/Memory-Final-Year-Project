@@ -169,7 +169,6 @@ function normalizeForMatch(s: string): string {
     .trim();
 }
 
-/** Avoids substring false positives (e.g. token "man" matching "woman"). Short tokens must match a whole word. */
 function lexicalTokenMatchesDoc(docNorm: string, token: string): boolean {
   if (!token) return false;
   if (token.length <= 3) {
@@ -213,7 +212,6 @@ function imagePassesLexicalGate(
   const significant = gateTokens.filter((t) => t.length >= 4);
   const required = significant.length > 0 ? significant : gateTokens;
   if (required.some((t) => lexicalTokenMatchesDoc(docNorm, t))) return true;
-  // Topic queries need strong embedding alignment; 0.44 lets unrelated art rank too often.
   return semanticScore >= 0.63;
 }
 
