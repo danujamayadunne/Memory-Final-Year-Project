@@ -12,24 +12,22 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Wake project (REST)
+      - name: Wake project (Auth health)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
-            echo "::error::Missing secrets. Add SUPABASE_URL and SUPABASE_ANON_KEY to repository Actions secrets."
+          if [ -z "${SUPABASE_URL:-}" ]; then
+            echo "::error::Missing secret SUPABASE_URL (e.g. https://xxxx.supabase.co)"
             exit 1
           fi
-          base="${SUPABASE_URL%/}"
-          code="$(curl -sS -o /dev/null -w "%{http_code}" \
-            "${base}/rest/v1/" \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
-          echo "GET ${base}/rest/v1/ → HTTP ${code}"
+          # Trim accidental newlines/spaces from secret paste
+          url="$(printf '%s' "$SUPABASE_URL" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          base="${url%/}"
+          code="$(curl -sS -o /dev/null -w "%{http_code}" "${base}/auth/v1/health")"
+          echo "GET ${base}/auth/v1/health → HTTP ${code}"
           case "$code" in
-            2??|404) exit 0 ;;
+            2??) exit 0 ;;
             *)
               echo "::error::Unexpected HTTP status: ${code}"
               exit 1
