@@ -12,24 +12,43 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Wake project (Auth health)
+      - name: Wake project
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${SUPABASE_URL:-}" ]; then
-            echo "::error::Missing secret SUPABASE_URL (e.g. https://xxxx.supabase.co)"
+          trim() { printf '%s' "$1" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; }
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::Add repository secrets SUPABASE_URL and SUPABASE_ANON_KEY (Dashboard → Project Settings → API: Project URL + anon / publishable key)."
             exit 1
           fi
-          # Trim accidental newlines/spaces from secret paste
-          url="$(printf '%s' "$SUPABASE_URL" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          base="${url%/}"
-          code="$(curl -sS -o /dev/null -w "%{http_code}" "${base}/auth/v1/health")"
-          echo "GET ${base}/auth/v1/health → HTTP ${code}"
-          case "$code" in
-            2??) exit 0 ;;
-            *)
-              echo "::error::Unexpected HTTP status: ${code}"
-              exit 1
-              ;;
+
+          base="$(trim "$SUPABASE_URL")"
+          base="${base%/}"
+          key="$(trim "$SUPABASE_ANON_KEY")"
+          case "$key" in
+            Bearer\ *) key="${key#Bearer }"; key="$(trim "$key")" ;;
           esac
+
+          req() {
+            local path="$1"
+            curl -sS -o /dev/null -w "%{http_code}" \
+              "${base}${path}" \
+              -H "apikey: ${key}" \
+              -H "Authorization: Bearer ${key}"
+          }
+
+          # Gateway often returns 401 without apikey; try Auth health then REST root.
+          for path in "/auth/v1/health" "/rest/v1/"; do
+            code="$(req "$path")"
+            echo "GET ${base}${path} → HTTP ${code}"
+            case "$code" in
+              2??) exit 0 ;;
+              404) [ "$path" = "/rest/v1/" ] && exit 0 ;;
+            esac
+          done
+
+          echo "::error::Still unauthorized (401). In GitHub secrets, use the same project as the URL: anon or publishable key only, no quotes, one line. Regenerate from Supabase → Project Settings → API if unsure."
+          exit 1
