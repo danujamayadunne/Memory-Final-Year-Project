@@ -4,13 +4,13 @@ A personal knowledge base for saving web content, notes, and images, with semant
 
 ## Features
 
+- **Browser extension** — Chrome extension in `chrome-extension/` to send the current tab to Memory.
 - **Summaries** — Paste a URL; content is fetched and summarized (papers, articles, blogs).
 - **Semantic search** — Find items by meaning across your library.
 - **Notes** — Rich editor with optional AI help; link notes to saved material.
 - **Knowledge map** — Graph view of how topics and items connect.
 - **Images** — Store images and search by description.
 - **Chat** — Ask questions with answers tied to your saved sources.
-- **Browser extension** — Optional Chrome extension in `chrome-extension/` to send the current tab to Memory.
 
 ## Tech stack
 
