@@ -243,7 +243,6 @@ export default function Home() {
   const [userTyping, setUserTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // CTA — pointer tracking for spotlight + parallax
   const ctaRef = useRef<HTMLDivElement>(null);
   const [ctaPointer, setCtaPointer] = useState<{
     x: number;
@@ -262,7 +261,7 @@ export default function Home() {
     setCtaPointer({
       x: (x / rect.width) * 100,
       y: (y / rect.height) * 100,
-      nx: (x / rect.width) * 2 - 1, // -1..1
+      nx: (x / rect.width) * 2 - 1,
       ny: (y / rect.height) * 2 - 1,
       active: true,
     });

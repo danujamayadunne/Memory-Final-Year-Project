@@ -71,11 +71,10 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ similarities });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in batch similarity:", error);
-    return NextResponse.json(
-      { error: error?.message || "Failed to compute batch similarity" },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Failed to compute batch similarity";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -294,15 +294,22 @@ function cosineSimilarity(vec1: number[], vec2: number[]): number {
   return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
 }
 
-function extractTextFromTiptap(content: any): string {
+type TiptapJson = {
+  text?: string;
+  content?: TiptapJson[];
+};
+
+function extractTextFromTiptap(content: unknown): string {
   if (!content) return "";
   if (typeof content === "string") return content;
+  if (typeof content !== "object" || content === null) return "";
 
+  const node = content as TiptapJson;
   let text = "";
-  if (content.text) text += content.text;
-  if (Array.isArray(content.content)) {
-    for (const node of content.content) {
-      text += extractTextFromTiptap(node) + "\n";
+  if (node.text) text += node.text;
+  if (Array.isArray(node.content)) {
+    for (const child of node.content) {
+      text += extractTextFromTiptap(child) + "\n";
     }
   }
   return text.trim();
@@ -312,7 +319,7 @@ async function getCachedEmbedding(text: string): Promise<number[]> {
   return embeddingCache.getOrCompute(text, generateEmbedding);
 }
 
-function parseEmbedding(raw: any): number[] | null {
+function parseEmbedding(raw: unknown): number[] | null {
   try {
     if (typeof raw === "string") {
       const parsed = raw
@@ -327,7 +334,9 @@ function parseEmbedding(raw: any): number[] | null {
       return parsed.length ? parsed : null;
     }
     if (raw && typeof raw === "object") {
-      const parsed = Object.values(raw).map((v: any) => Number(v)).filter((n) => !Number.isNaN(n));
+      const parsed = Object.values(raw as Record<string, unknown>)
+        .map((v) => Number(v))
+        .filter((n) => !Number.isNaN(n));
       return parsed.length ? parsed : null;
     }
   } catch { }
@@ -399,38 +408,59 @@ export async function POST(req: NextRequest) {
 
     const sources: SourceItem[] = [];
 
-    const summaryColumns = queryEmbedding
-      ? "id, url, summary, title, tags, embedding"
-      : "id, url, summary, title, tags";
-    const imageColumns = queryEmbedding
-      ? "id, image_url, source_url, description, tags, embedding, created_at"
-      : "id, image_url, source_url, description, tags, created_at";
+    const summariesPromise = queryEmbedding
+      ? supabase
+          .from("web_summaries")
+          .select("id, url, summary, title, tags, embedding")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(150)
+      : supabase
+          .from("web_summaries")
+          .select("id, url, summary, title, tags")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(150);
+
+    const imagesPromise = queryEmbedding
+      ? supabase
+          .from("image_memories")
+          .select("id, image_url, source_url, description, tags, embedding, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(150)
+      : supabase
+          .from("image_memories")
+          .select("id, image_url, source_url, description, tags, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(150);
 
     const [summariesResult, notesResult, imagesResult] = await Promise.all([
-      supabase
-        .from("web_summaries")
-        .select(summaryColumns as any)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(150) as unknown as Promise<{ data: any[] | null; error: any }>,
+      summariesPromise,
       supabase
         .from("notes")
         .select("id, title, content")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false })
         .limit(80),
-      supabase
-        .from("image_memories")
-        .select(imageColumns as any)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(150) as unknown as Promise<{ data: any[] | null; error: any }>,
+      imagesPromise,
     ]);
 
     if (summariesResult.data) {
+      type SummaryFetchRow = {
+        id: string;
+        url: string;
+        summary: string | null;
+        title: string | null;
+        tags: unknown;
+        embedding?: unknown;
+      };
+      const summaryRows = summariesResult.data as SummaryFetchRow[];
+
       const queryNorm = normalizeForMatch(query);
       const contentTokens = meaningfulQueryTokens(queryNorm);
-      const enriched = summariesResult.data.map((s) => {
+      const enriched = summaryRows.map((s) => {
         const tagsStr = Array.isArray(s.tags) ? s.tags.join(" ") : "";
         const docNorm = normalizeForMatch(`${s.title || ""} ${s.summary || ""} ${tagsStr}`);
 
@@ -523,12 +553,23 @@ export async function POST(req: NextRequest) {
     }
 
     if (imagesResult.data) {
+      type ImageFetchRow = {
+        id: string;
+        image_url: string;
+        source_url?: string | null;
+        description?: string | null;
+        tags: unknown;
+        created_at: string;
+        embedding?: unknown;
+      };
+      const imageRows = imagesResult.data as ImageFetchRow[];
+
       const imageQueryNorm = normalizeForMatch(query);
       const imageTokens = meaningfulQueryTokens(imageQueryNorm);
       const imageSubstantive = substantiveImageQueryTokens(imageTokens);
       const listAllSavedImages = isBroadImageListingQuery(imageQueryNorm);
 
-      const enriched = imagesResult.data.map((img) => {
+      const enriched = imageRows.map((img) => {
         const tagsStr = Array.isArray(img.tags) ? img.tags.join(" ") : "";
         const docNorm = normalizeForMatch(`${img.description || ""} ${tagsStr}`);
         const phraseMatched =
@@ -658,7 +699,10 @@ RULES:
 
 User question: ${query}`;
 
-    const sourcesPayload = topSources.map(({ similarity, ...rest }) => rest);
+    const sourcesPayload = topSources.map(({ similarity, ...rest }) => {
+      void similarity;
+      return rest;
+    });
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -682,10 +726,11 @@ User question: ${query}`;
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
           controller.close();
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : "Stream error";
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ type: "error", error: err?.message || "Stream error" })}\n\n`
+              `data: ${JSON.stringify({ type: "error", error: errMsg })}\n\n`
             )
           );
           controller.close();
@@ -700,10 +745,11 @@ User question: ${query}`;
         Connection: "keep-alive",
       },
     });
-  } catch (e: any) {
-    return new Response(
-      JSON.stringify({ error: e?.message || "Unexpected error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Unexpected error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

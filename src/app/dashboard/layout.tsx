@@ -36,7 +36,7 @@ export default function DashboardRouteLayout({
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader className="h-9 w-9 animate-spin" />
+        <Loader className="h-5 w-5 animate-spin" />
       </div>
     )
   }

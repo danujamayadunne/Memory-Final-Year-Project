@@ -55,9 +55,9 @@ export default function ImagesPage() {
 
       if (error) throw error
       setItems(data ?? [])
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Failed to load images:", e)
-      setError(e?.message || "Failed to load images")
+      setError(e instanceof Error ? e.message : "Failed to load images")
     } finally {
       setLoading(false)
     }
@@ -121,8 +121,10 @@ export default function ImagesPage() {
           const data = await response.json()
           setSearchResults(Array.isArray(data.results) ? data.results : [])
         }
-      } catch (err: any) {
-        if (err?.name !== "AbortError") {
+      } catch (err: unknown) {
+        const isAbort =
+          err instanceof Error && err.name === "AbortError";
+        if (!isAbort) {
           console.error("Image semantic search error:", err)
           setSearchResults([])
         }

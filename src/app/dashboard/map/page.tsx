@@ -136,7 +136,7 @@ export default function MapPage() {
       const t = setTimeout(buildGraph, 200)
       return () => clearTimeout(t)
     }
-  }, [items])
+  }, [items]) // eslint-disable-line react-hooks/exhaustive-deps -- only when item list changes; buildGraph reads latest items from closure
 
   const buildGraph = async () => {
     if (items.length === 0) return

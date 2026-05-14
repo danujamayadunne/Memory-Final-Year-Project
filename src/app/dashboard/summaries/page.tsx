@@ -137,9 +137,16 @@ export default function SummariesPage() {
         const allTags = new Map<string, Tag>()
         summaries.forEach(item => {
           if (item.tags && Array.isArray(item.tags)) {
-            item.tags.forEach((tag: any) => {
-              if (tag.id && !allTags.has(tag.id)) {
-                allTags.set(tag.id, { id: tag.id, name: tag.name || '', color: tag.color || '#6b7280' })
+            item.tags.forEach((tag: unknown) => {
+              if (
+                typeof tag === "object" &&
+                tag !== null &&
+                "id" in tag &&
+                typeof (tag as { id: unknown }).id === "string" &&
+                !allTags.has((tag as { id: string }).id)
+              ) {
+                const t = tag as { id: string; name?: string; color?: string }
+                allTags.set(t.id, { id: t.id, name: t.name || '', color: t.color || '#6b7280' })
               }
             })
           }

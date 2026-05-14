@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,19 +36,13 @@ export function SimpleTagDialog({
   isOpen,
   onClose
 }: SimpleTagDialogProps) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [allTags, setAllTags] = useState<Tag[]>([])
   const [newTagName, setNewTagName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (isOpen) {
-      loadAllTags()
-    }
-  }, [isOpen])
-
-  const loadAllTags = async () => {
+  const loadAllTags = useCallback(async () => {
     setLoading(true)
 
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -68,11 +62,21 @@ export function SimpleTagDialog({
       setError("Failed to load tags")
     } else {
       const tagsMap = new Map<string, Tag>()
-      summaries?.forEach((summary: any) => {
+      summaries?.forEach((summary) => {
         if (summary.tags && Array.isArray(summary.tags)) {
-          summary.tags.forEach((tag: any) => {
-            if (tag.id && tag.name && !tagsMap.has(tag.id)) {
-              tagsMap.set(tag.id, { id: tag.id, name: tag.name, color: tag.color || '#6b7280' })
+          summary.tags.forEach((tag: unknown) => {
+            if (
+              typeof tag === "object" &&
+              tag !== null &&
+              "id" in tag &&
+              "name" in tag &&
+              typeof (tag as { id: unknown }).id === "string" &&
+              typeof (tag as { name: unknown }).name === "string"
+            ) {
+              const t = tag as { id: string; name: string; color?: string }
+              if (!tagsMap.has(t.id)) {
+                tagsMap.set(t.id, { id: t.id, name: t.name, color: t.color || '#6b7280' })
+              }
             }
           })
         }
@@ -80,7 +84,13 @@ export function SimpleTagDialog({
       setAllTags(Array.from(tagsMap.values()).sort((a, b) => a.name.localeCompare(b.name)))
     }
     setLoading(false)
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    if (isOpen) {
+      void loadAllTags()
+    }
+  }, [isOpen, loadAllTags])
 
   const handleCreateTag = async () => {
     if (!newTagName.trim()) return
@@ -124,9 +134,9 @@ export function SimpleTagDialog({
         }
       }
       setNewTagName("")
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error creating tag:", e)
-      setError(`Error: ${e.message || "Failed to create tag"}`)
+      setError(`Error: ${e instanceof Error ? e.message : "Failed to create tag"}`)
     } finally {
       setLoading(false)
     }
@@ -151,9 +161,9 @@ export function SimpleTagDialog({
       if (updateError) throw updateError
 
       onTagsUpdate(updatedTags)
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error removing tag:", e)
-      setError(`Error: ${e.message || "Failed to remove tag"}`)
+      setError(`Error: ${e instanceof Error ? e.message : "Failed to remove tag"}`)
     } finally {
       setLoading(false)
     }
@@ -180,9 +190,9 @@ export function SimpleTagDialog({
         if (updateError) throw updateError
         onTagsUpdate(updatedTags)
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error linking tag:", e)
-      setError(`Error: ${e.message || "Failed to link tag"}`)
+      setError(`Error: ${e instanceof Error ? e.message : "Failed to link tag"}`)
     } finally {
       setLoading(false)
     }

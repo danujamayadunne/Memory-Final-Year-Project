@@ -87,7 +87,6 @@ export function ChatSheet({ summary, isOpen, onClose }: ChatSheetProps) {
     }
 
     setMessages(prev => [...prev, userMessage])
-    const currentInput = input.trim()
     setInput("")
     setLoading(true)
 

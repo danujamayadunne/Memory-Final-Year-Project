@@ -198,16 +198,20 @@ export async function POST(req: NextRequest) {
       `Example: {"description":"...","tags":["tag1","tag2","tag3"]}`;
 
     const analysisText = await generateTextWithImage(config, imagePrompt, base64, mimeType);
-    let analysis: ImageAnalysis = { description: "", tags: [] };
+    const analysis: ImageAnalysis = { description: "", tags: [] };
 
     const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        analysis.description = typeof parsed.description === "string" ? parsed.description.trim() : "";
+        const parsed = JSON.parse(jsonMatch[0]) as {
+          description?: unknown;
+          tags?: unknown;
+        };
+        analysis.description =
+          typeof parsed.description === "string" ? parsed.description.trim() : "";
         analysis.tags = Array.isArray(parsed.tags)
           ? parsed.tags
-              .map((tag: unknown) => typeof tag === "string" ? tag.trim() : "")
+              .map((tag: unknown) => (typeof tag === "string" ? tag.trim() : ""))
               .filter((tag: string) => tag.length > 0)
               .slice(0, 3)
           : [];
@@ -261,11 +265,9 @@ export async function POST(req: NextRequest) {
         tags,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Image upload failed:", error);
-    return NextResponse.json(
-      { error: error?.message || "Unexpected error" },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

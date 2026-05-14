@@ -220,8 +220,11 @@ export function TiptapEditor({
             }
             onValueChange={(v) => {
               const level = parseInt(v, 10)
-              if (level) editor.chain().focus().toggleHeading({ level }).run()
-              else editor.chain().focus().setParagraph().run()
+              if (level === 1 || level === 2 || level === 3) {
+                editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run()
+              } else {
+                editor.chain().focus().setParagraph().run()
+              }
             }}
           >
             <SelectTrigger className="h-9 w-[120px] border-0 bg-transparent shadow-none text-sm" size="sm">

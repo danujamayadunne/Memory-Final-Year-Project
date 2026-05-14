@@ -102,41 +102,48 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ results: [] });
       }
 
+      type SummaryRow = Record<string, unknown> & { embedding: unknown };
+      type RankedSummary = Omit<SummaryRow, "embedding"> & { similarity: number };
+
       const scored = allSummaries
-        .map((summary: any) => {
+        .map((summary: SummaryRow) => {
           const vec = parseStoredEmbedding(summary.embedding, queryEmbedding.length);
           if (!vec) return null;
           const similarity = cosineSimilarity(queryEmbedding, vec);
-          const { embedding: _, ...rest } = summary;
-          return { ...rest, similarity };
+          const { embedding, ...rest } = summary;
+          void embedding;
+          return { ...rest, similarity } as RankedSummary;
         })
-        .filter((item: any): item is { similarity: number } & Record<string, unknown> =>
-          item !== null
-        )
-        .sort((a: any, b: any) => b.similarity - a.similarity);
+        .filter((item): item is RankedSummary => item !== null)
+        .sort((a, b) => b.similarity - a.similarity);
 
-      const finalResults = applyTieredThreshold(scored as any[])
+      const finalResults = applyTieredThreshold(scored)
         .slice(0, limit)
-        .map(({ similarity: _s, ...rest }: any) => rest);
+        .map(({ similarity, ...rest }) => {
+          void similarity;
+          return rest;
+        });
 
       return NextResponse.json({ results: finalResults });
     }
 
-    const ranked = (summaries || []).map((item: any) => ({
+    type RpcRow = Record<string, unknown> & { similarity: unknown };
+    const ranked = (summaries || []).map((item: RpcRow) => ({
       ...item,
       similarity: Number(item.similarity),
     }));
     const finalResults = applyTieredThreshold(ranked)
-      .sort((a: any, b: any) => b.similarity - a.similarity)
+      .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit)
-      .map(({ similarity: _s, ...rest }: any) => rest);
+      .map(({ similarity, ...rest }) => {
+        void similarity;
+        return rest;
+      });
 
     return NextResponse.json({ results: finalResults });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error performing vector search:", error);
-    return NextResponse.json(
-      { error: error?.message || "Failed to perform search" },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Failed to perform search";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

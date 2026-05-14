@@ -2,7 +2,6 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypt
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
-const TAG_LENGTH = 16;
 
 function getEncryptionKey(): Buffer {
   const secret = process.env.ENCRYPTION_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

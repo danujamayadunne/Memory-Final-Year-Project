@@ -32,8 +32,8 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [url, setUrl] = useState("")
   const [items, setItems] = useState<SummaryItem[]>([])
-  const [tags, setTags] = useState<Tag[]>([])
-  const [totalCount, setTotalCount] = useState(0)
+  const [, setTags] = useState<Tag[]>([])
+  const [, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
@@ -91,9 +91,18 @@ export default function DashboardPage() {
       const allTags = new Map<string, Tag>()
       summaries.forEach(item => {
         if (item.tags && Array.isArray(item.tags)) {
-          item.tags.forEach((tag: any) => {
-            if (tag.id && !allTags.has(tag.id)) {
-              allTags.set(tag.id, { id: tag.id, name: tag.name || '', color: tag.color || '#6b7280' })
+          item.tags.forEach((tag: unknown) => {
+            if (
+              typeof tag === "object" &&
+              tag !== null &&
+              "id" in tag &&
+              "name" in tag &&
+              typeof (tag as { id: unknown }).id === "string"
+            ) {
+              const t = tag as { id: string; name?: string; color?: string }
+              if (!allTags.has(t.id)) {
+                allTags.set(t.id, { id: t.id, name: t.name || '', color: t.color || '#6b7280' })
+              }
             }
           })
         }
@@ -143,8 +152,8 @@ export default function DashboardPage() {
       setTotalCount((prev) => prev + 1)
       setUrl("")
       setAddingProgress("")
-    } catch (e: any) {
-      setError(e?.message || "Something went wrong")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Something went wrong")
       setAddingProgress("")
     } finally {
       setLoading(false)

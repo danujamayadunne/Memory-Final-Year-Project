@@ -98,7 +98,13 @@ export async function POST(req: NextRequest) {
 
     const directLookupColumns = "id, image_url, source_url, description, tags, created_at";
 
-    const matchesColorRequirement = (item: any) => {
+    type ImageRowLite = {
+      description?: string | null;
+      tags?: unknown;
+      similarity?: number;
+    };
+
+    const matchesColorRequirement = (item: ImageRowLite) => {
       if (queryColors.length === 0) return true;
       const description = item.description?.toLowerCase() || "";
       const tags = Array.isArray(item.tags)
@@ -143,36 +149,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ results: [] });
     }
 
+    type RowWithEmbedding = Record<string, unknown> & {
+      embedding: unknown;
+    };
+
+    type RankedRow = Omit<RowWithEmbedding, "embedding"> & { similarity: number };
+
     const ranked = rows
-      .map((row: any) => {
+      .map((row: RowWithEmbedding) => {
         const vec = parseStoredEmbedding(row.embedding, queryEmbedding.length);
         if (!vec) return null;
         const similarity = cosineSimilarity(queryEmbedding, vec);
-        const { embedding: _, ...rest } = row;
-        return { ...rest, similarity };
+        const { embedding, ...rest } = row;
+        void embedding;
+        return { ...rest, similarity } as RankedRow;
       })
-      .filter((item: any): item is { similarity: number } & Record<string, unknown> =>
-        item !== null
-      )
+      .filter((item): item is RankedRow => item !== null)
       .filter(matchesColorRequirement)
-      .sort((a: any, b: any) => b.similarity - a.similarity);
+      .sort((a, b) => b.similarity - a.similarity);
 
-    const strict = ranked.filter((item: any) => item.similarity >= SIMILARITY_STRICT);
+    const strict = ranked.filter((item) => item.similarity >= SIMILARITY_STRICT);
     const thresholded =
       strict.length > 0
         ? strict
-        : ranked.filter((item: any) => item.similarity >= SIMILARITY_RELAXED);
+        : ranked.filter((item) => item.similarity >= SIMILARITY_RELAXED);
 
-    const limited = thresholded
-      .slice(0, limit)
-      .map(({ similarity: _s, ...rest }: any) => rest);
+    const limited = thresholded.slice(0, limit).map(({ similarity, ...rest }) => {
+      void similarity;
+      return rest;
+    });
 
     return NextResponse.json({ results: limited });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error performing image semantic search:", error);
-    return NextResponse.json(
-      { error: error?.message || "Failed to perform semantic search" },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Failed to perform semantic search";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

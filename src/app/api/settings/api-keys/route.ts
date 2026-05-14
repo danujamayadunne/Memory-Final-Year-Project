@@ -35,12 +35,10 @@ export async function GET() {
     }));
 
     return NextResponse.json({ keys: sanitized });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[GET /api/settings/api-keys]", e);
-    return NextResponse.json(
-      { error: e?.message || "Failed to fetch keys" },
-      { status: 500 }
-    );
+    const message = e instanceof Error ? e.message : "Failed to fetch keys";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -125,12 +123,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[POST /api/settings/api-keys]", e);
-    return NextResponse.json(
-      { error: e?.message || "Failed to save key" },
-      { status: 500 }
-    );
+    const message = e instanceof Error ? e.message : "Failed to save key";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -167,12 +163,10 @@ export async function PUT(req: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[PUT /api/settings/api-keys]", e);
-    return NextResponse.json(
-      { error: e?.message || "Failed to activate key" },
-      { status: 500 }
-    );
+    const message = e instanceof Error ? e.message : "Failed to activate key";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -205,12 +199,10 @@ export async function DELETE(req: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[DELETE /api/settings/api-keys]", e);
-    return NextResponse.json(
-      { error: e?.message || "Failed to delete key" },
-      { status: 500 }
-    );
+    const message = e instanceof Error ? e.message : "Failed to delete key";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

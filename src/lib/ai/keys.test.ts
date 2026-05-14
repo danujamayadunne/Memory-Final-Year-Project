@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { encrypt } from "./encryption";
-import { getAllUserKeys, getUserProviderConfig } from "./keys";
+import { getAllUserKeys, getUserProviderConfig, type AppSupabaseClient } from "./keys";
 
 type QueryResult<T> = {
   data: T | null;
@@ -80,7 +80,9 @@ describe("keys", () => {
       },
     });
 
-    await expect(getUserProviderConfig(supabase, "user-1")).resolves.toEqual({
+    const client = supabase as unknown as AppSupabaseClient;
+
+    await expect(getUserProviderConfig(client, "user-1")).resolves.toEqual({
       provider: "openai",
       apiKey,
       modelId: "gpt-4o",
@@ -93,7 +95,9 @@ describe("keys", () => {
       activeKey: { data: null, error: { message: "not found" } },
     });
 
-    await expect(getUserProviderConfig(supabase, "user-1")).resolves.toBeNull();
+    await expect(
+      getUserProviderConfig(supabase as unknown as AppSupabaseClient, "user-1")
+    ).resolves.toBeNull();
   });
 
   it("returns all stored keys for a user", async () => {
@@ -116,7 +120,7 @@ describe("keys", () => {
       },
     });
 
-    await expect(getAllUserKeys(supabase, "user-1")).resolves.toEqual([
+    await expect(getAllUserKeys(supabase as unknown as AppSupabaseClient, "user-1")).resolves.toEqual([
       {
         id: "key-1",
         provider: "openai",

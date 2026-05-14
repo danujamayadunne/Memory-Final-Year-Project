@@ -70,11 +70,10 @@ export async function PUT(req: NextRequest) {
     rememberSimilarity(similarityKey, similarity);
 
     return NextResponse.json({ similarity, cached: false });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error calculating similarity:", error);
-    return NextResponse.json(
-      { error: error?.message || "Failed to calculate similarity" },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Failed to calculate similarity";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

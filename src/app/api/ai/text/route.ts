@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { load } from "cheerio";
 import { generateText, generateEmbedding, resolveConfig } from "@/lib/ai/provider";
-import { getUserProviderConfig } from "@/lib/ai/keys";
+import { getUserProviderConfig, type AppSupabaseClient } from "@/lib/ai/keys";
 
 async function fetchWebPageWithFirecrawl(url: string): Promise<{ content: string; title: string }> {
   try {
@@ -35,7 +35,7 @@ async function fetchWebPageWithFirecrawl(url: string): Promise<{ content: string
     }
 
     throw new Error('No content returned from Firecrawl');
-  } catch (error) {
+  } catch {
     const res = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
@@ -93,7 +93,7 @@ function cleanSummaryText(text: string): string {
 }
 
 async function createAndLinkTags(
-  supabase: any,
+  supabase: AppSupabaseClient,
   summaryId: string,
   userId: string,
   tagNames: string[]
@@ -112,11 +112,24 @@ async function createAndLinkTags(
 
   const existingTagsMap = new Map<string, { id: string; name: string; color: string }>();
   if (existingSummaries) {
-    existingSummaries.forEach((summary: any) => {
+    existingSummaries.forEach((summary) => {
       if (summary.tags && Array.isArray(summary.tags)) {
-        summary.tags.forEach((tag: any) => {
-          if (tag.name && !existingTagsMap.has(tag.name.toLowerCase())) {
-            existingTagsMap.set(tag.name.toLowerCase(), tag);
+        summary.tags.forEach((tag: unknown) => {
+          if (
+            typeof tag === "object" &&
+            tag !== null &&
+            "id" in tag &&
+            "name" in tag &&
+            typeof (tag as { name: unknown }).name === "string"
+          ) {
+            const t = tag as { id: string; name: string; color?: string };
+            if (t.name && !existingTagsMap.has(t.name.toLowerCase())) {
+              existingTagsMap.set(t.name.toLowerCase(), {
+                id: t.id,
+                name: t.name,
+                color: t.color || "#6b7280",
+              });
+            }
           }
         });
       }
@@ -266,7 +279,11 @@ Return as a JSON array of exactly 3 tag strings in English only, no additional t
       const jsonMatch = tagText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        tagNames = Array.isArray(parsed) ? parsed.filter((t: any) => typeof t === 'string' && t.trim()).slice(0, 3) : [];
+        tagNames = Array.isArray(parsed)
+          ? parsed
+              .filter((t): t is string => typeof t === "string" && t.trim().length > 0)
+              .slice(0, 3)
+          : [];
       }
     } catch {
       tagNames = [];
@@ -303,10 +320,11 @@ Return as a JSON array of exactly 3 tag strings in English only, no additional t
     }
 
     return NextResponse.json({ item: transformedItem });
-  } catch (e: any) {
-    console.error("[POST /api/ai/text] Error:", e?.message || e);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[POST /api/ai/text] Error:", message);
     return NextResponse.json(
-      { error: e?.message || "Unexpected error" },
+      { error: e instanceof Error ? e.message : "Unexpected error" },
       { status: 500 }
     );
   }

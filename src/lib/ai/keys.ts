@@ -1,9 +1,8 @@
 import { decrypt } from "./encryption";
 import type { ProviderConfig, AIProvider } from "./provider";
+import type { createClient } from "@/lib/supabase/server";
 
-type SupabaseClient = {
-  from: (table: string) => any;
-};
+export type AppSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
 export type StoredKey = {
   id: string;
@@ -18,7 +17,7 @@ export type StoredKey = {
 };
 
 export async function getUserProviderConfig(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<ProviderConfig | null> {
   try {
@@ -44,7 +43,7 @@ export async function getUserProviderConfig(
 }
 
 export async function getAllUserKeys(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string
 ): Promise<StoredKey[]> {
   const { data, error } = await supabase

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,7 +9,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       width: 360px;
       min-height: 420px;
@@ -18,6 +24,7 @@
       color: #000;
       -webkit-font-smoothing: antialiased;
     }
+
     .header {
       padding: 24px 24px 20px;
       display: flex;
@@ -25,6 +32,7 @@
       gap: 14px;
       background: #fff;
     }
+
     .logo {
       width: 44px;
       height: 44px;
@@ -37,11 +45,32 @@
       font-size: 20px;
       color: #fff;
     }
-    .header-text h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
-    .header-text p { font-size: 13px; color: #666; margin-top: 2px; font-weight: 500; }
-    .content { padding: 20px 24px 24px; }
-    .section { display: none; }
-    .section.active { display: block; }
+
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .header-text p {
+      font-size: 13px;
+      color: #666;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .content {
+      padding: 20px 24px 24px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
     .btn {
       width: 100%;
       padding: 14px 20px;
@@ -53,20 +82,32 @@
       transition: all 0.2s ease;
       font-family: inherit;
     }
-    .btn:hover { transform: scale(1.01); }
-    .btn:active { transform: scale(0.99); }
+
+    .btn:hover {
+      transform: scale(1.01);
+    }
+
+    .btn:active {
+      transform: scale(0.99);
+    }
+
     .btn-primary {
       background: #000;
       color: #fff;
     }
+
     .btn-secondary {
       background: #e5e5e5;
       color: #000;
       margin-top: 10px;
     }
-    .btn-secondary:hover { background: #d4d4d4; }
+
+    .btn-secondary:hover {
+      background: #d4d4d4;
+    }
+
     .btn-ghost {
-      background: rgba(0,0,0,0.06);
+      background: rgba(0, 0, 0, 0.06);
       color: #666;
       padding: 8px 14px;
       font-size: 13px;
@@ -74,7 +115,12 @@
       width: auto;
       flex-shrink: 0;
     }
-    .btn-ghost:hover { background: rgba(0,0,0,0.1); color: #000; }
+
+    .btn-ghost:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: #000;
+    }
+
     .login-intro {
       text-align: center;
       padding: 8px 0 24px;
@@ -82,6 +128,7 @@
       font-size: 15px;
       line-height: 1.5;
     }
+
     .user-card {
       display: flex;
       align-items: center;
@@ -91,6 +138,7 @@
       border-radius: 14px;
       margin-bottom: 16px;
     }
+
     .avatar {
       width: 44px;
       height: 44px;
@@ -104,9 +152,31 @@
       color: #fff;
       flex-shrink: 0;
     }
-    .user-info { flex: 1; min-width: 0; }
-    .user-info strong { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .user-info span { font-size: 13px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; margin-top: 2px; }
+
+    .user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-info strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-info span {
+      font-size: 13px;
+      color: #666;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+      margin-top: 2px;
+    }
+
     .url-card {
       padding: 14px 16px;
       background: #fff;
@@ -117,6 +187,7 @@
       margin-bottom: 16px;
       line-height: 1.5;
     }
+
     .url-label {
       font-size: 11px;
       font-weight: 600;
@@ -125,25 +196,39 @@
       letter-spacing: 0.5px;
       margin-bottom: 6px;
     }
+
     .loading {
       text-align: center;
       padding: 48px 0;
     }
+
     .spinner {
       width: 32px;
       height: 32px;
-      border: 3px solid rgba(0,0,0,0.1);
+      border: 3px solid rgba(0, 0, 0, 0.1);
       border-top-color: #000;
       border-radius: 50%;
       animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
       margin: 0 auto 16px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading p { font-size: 15px; color: #666; font-weight: 500; }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading p {
+      font-size: 15px;
+      color: #666;
+      font-weight: 500;
+    }
+
     .success {
       text-align: center;
       padding: 32px 0;
     }
+
     .success-icon {
       width: 64px;
       height: 64px;
@@ -157,45 +242,65 @@
       font-weight: 700;
       font-size: 28px;
     }
-    .success h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
-    .success p { font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+
+    .success h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+
+    .success p {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
     .error {
       padding: 12px 16px;
-      background: rgba(0,0,0,0.08);
+      background: rgba(0, 0, 0, 0.08);
       color: #000;
       border-radius: 12px;
       font-size: 13px;
       margin-bottom: 16px;
       display: none;
     }
-    .error.show { display: block; }
+
+    .error.show {
+      display: block;
+    }
+
     .shortcut-badge {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       padding: 6px 12px;
-      background: rgba(0,0,0,0.05);
+      background: rgba(0, 0, 0, 0.05);
       border-radius: 8px;
       font-size: 12px;
       color: #666;
       margin-top: 14px;
       font-weight: 500;
     }
+
     .shortcut-badge kbd {
       padding: 2px 6px;
-      background: rgba(0,0,0,0.08);
+      background: rgba(0, 0, 0, 0.08);
       border-radius: 4px;
       font-family: inherit;
       font-size: 11px;
     }
+
     .format-selector {
       display: flex;
       gap: 0;
-      background: rgba(0,0,0,0.06);
+      background: rgba(0, 0, 0, 0.06);
       border-radius: 10px;
       padding: 4px;
       margin-bottom: 16px;
     }
+
     .format-option {
       flex: 1;
       padding: 10px 14px;
@@ -209,14 +314,19 @@
       font-family: inherit;
       transition: all 0.2s ease;
     }
-    .format-option:hover { color: #000; }
+
+    .format-option:hover {
+      color: #000;
+    }
+
     .format-option.active {
       background: #fff;
       color: #000;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     }
   </style>
 </head>
+
 <body>
   <div class="header">
     <div class="header-text">
@@ -272,4 +382,5 @@
   <script src="config.js"></script>
   <script src="popup.js"></script>
 </body>
+
 </html>
